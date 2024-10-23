@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+
 const connectDatabase = () => {
     console.log(process.env.DB_URI)
     mongoose.connect(process.env.DB_URI, {
@@ -10,4 +11,5 @@ const connectDatabase = () => {
         console.log(`Server Error: ${err}`)
     })
 }
+
 module.exports = connectDatabase;

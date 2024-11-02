@@ -89,3 +89,25 @@ exports.logout = async (req, res, next) => {
   });
 };
 
+exports.getUser = async (req, res, next) => {
+  try {
+    const userId = req.params.id; 
+
+    const user = await User.findById(userId).select("-password");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      user,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
+};

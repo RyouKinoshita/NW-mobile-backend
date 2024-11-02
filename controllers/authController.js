@@ -5,8 +5,8 @@ const {cloudinary, secretKey} = require('../config/cloudinaryConfig')
 const bcrypt = require("bcryptjs");
 
 exports.registerUser = async (req, res, next) => {
-  console.log(req.file);
-  console.log(req.body);
+  // console.log(req.file);
+  // console.log(req.body);
   const result = await cloudinary.v2.uploader.upload(
     req.file.path,
     {

@@ -1,8 +1,9 @@
 const User = require("../model/user");
 const crypto = require("crypto");
 const sendToken = require("../utils/jwtToken");
-const {cloudinary, secretKey} = require('../config/cloudinaryConfig')
+const { cloudinary, secretKey } = require('../config/cloudinaryConfig')
 const bcrypt = require("bcryptjs");
+const { isErrored } = require("stream");
 
 exports.registerUser = async (req, res, next) => {
   // console.log(req.file);
@@ -69,7 +70,7 @@ exports.loginUser = async (req, res, next) => {
       return res.status(401).json({ message: "Invalid Email or Password" });
     }
 
-    console.log("Login successful");
+    // console.log("Login successful");
     sendToken(user, 200, res);
   } catch (error) {
     console.error(error);
@@ -91,7 +92,7 @@ exports.logout = async (req, res, next) => {
 
 exports.getUser = async (req, res, next) => {
   try {
-    const userId = req.params.id; 
+    const userId = req.params.id;
 
     const user = await User.findById(userId).select("-password");
 
@@ -109,5 +110,39 @@ exports.getUser = async (req, res, next) => {
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+exports.addUserAddress = async (req, res, next) => {
+  try {
+    const { _id, lotNum, street, baranggay, city } = req.body;
+
+    if (!_id || !lotNum || !street || !baranggay || !city) {
+      return res.status(400).json({ success: false, message: "All fields are required." });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      _id,
+      {
+        address: { lotNum, street, baranggay, city },
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({ success: false, message: "User not found." });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Address added successfully.",
+      user: updatedUser,
+    });
+  } catch (error) {
+    console.error("Error adding address:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error.",
+    });
   }
 };

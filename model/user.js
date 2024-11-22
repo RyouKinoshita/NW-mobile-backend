@@ -20,6 +20,21 @@ const userSchema = new mongoose.Schema(
     phone: {
       type: String,
       // required: [true, "Please enter your phone number"],
+      unique: true,
+    },
+    address: {
+      lotNum: {
+        type: String,
+      },
+      street: {
+        type: String,
+      },
+      baranggay: {
+        type: String,
+      },
+      city: {
+        type: String,
+      },
     },
     password: {
       type: String,
@@ -90,3 +105,4 @@ userSchema.methods.getResetPasswordToken = function () {
 };
 
 module.exports = mongoose.model("User", userSchema);
+

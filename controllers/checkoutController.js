@@ -1,9 +1,42 @@
-
 const Checkout = require("../model/checkout");
 const Product = require("../model/product");
 const User = require("../model/user");
+const stripe = require('stripe')(process.env.STRIPE_SECRET);
 
 const checkoutController = {
+    createPaymentIntent: async (req, res) => {
+        try {
+            const { amount, currency, userId } = req.body;
+
+            // Create the payment intent and associate it with the customer
+            try {
+                const user = await User.findById(userId);
+
+                if (!user) {
+                    return res.status(404).json({ message: 'User not found' });
+                }
+
+                const customerId = user.stripeCustomerId;
+                // console.log(customerId)
+
+                if (!customerId) {
+                    return res.status(400).json({ message: 'No Stripe customer ID found for this user' });
+                }
+                const paymentIntent = await stripe.paymentIntents.create({
+                    amount: amount,
+                    currency: 'php',
+                    customer: customerId,
+                });
+                res.send({ clientSecret: paymentIntent.client_secret });
+            } catch (error) {
+                console.error('Error creating payment intent:', error);
+                res.status(500).json({ message: 'Error creating payment intent', error: error.message });
+            }
+        } catch (error) {
+            console.error('Error creating payment intent:', error);
+            res.status(500).json({ message: 'Error creating payment intent' });
+        }
+    },
     checkoutOrder: async (req, res) => {
         try {
             const {
@@ -13,52 +46,43 @@ const checkoutController = {
                 deliveryAddress,
                 paymentMethod,
                 totalPrice,
+                paymentTerm
             } = req.body;
 
-            console.log('address', deliveryAddress)
+            // console.log('address', deliveryAddress)
 
-            // Validate the data (you can extend this to add more validations)
             if (!userId || !sellerId || !products || !deliveryAddress || !paymentMethod || !totalPrice) {
                 return res.status(400).json({ message: "All fields are required." });
             }
 
-            // Check if the user exists
             const user = await User.findById(userId);
             if (!user) {
                 return res.status(404).json({ message: "User not found." });
             }
 
-            // Check if the seller exists
             const seller = await User.findById(sellerId);
             if (!seller) {
                 return res.status(404).json({ message: "Seller not found." });
             }
 
-            // Validate the stock for each product in the order
             for (let productItem of products) {
                 const { productId, sackCount } = productItem;
 
-                // Find the product in the database
                 const product = await Product.findById(productId);
                 if (!product) {
-                    return res.status(404).json({ message: `Product with ID ${productId} not found.` });
+                    return res.status(404).json({ message: `Product with ID ${productId} not found. `});
                 }
 
-                // Check if there’s enough stock for the product
                 if (product.sack < sackCount) {
                     return res.status(400).json({
                         message: `Not enough stock for ${product.name}. Only ${product.sack} sacks available.`,
                     });
                 }
-
-                // Subtract the ordered sackCount from the product's stock (sack field)
                 product.sack -= sackCount;
-
-                // Save the updated product back to the database
+                // console.log(product)
                 await product.save();
             }
 
-            // Create a new Checkout document
             const newCheckout = new Checkout({
                 userId,
                 sellerId,
@@ -66,12 +90,11 @@ const checkoutController = {
                 deliveryAddress,
                 paymentMethod,
                 totalPrice,
+                paymentTerm,
             });
 
-            // Save the checkout order to the database
             const savedCheckout = await newCheckout.save();
 
-            // Return a response
             res.status(201).json({ message: "Checkout successful", checkout: savedCheckout });
         } catch (error) {
             console.error("Checkout error:", error);
@@ -82,7 +105,7 @@ const checkoutController = {
         try {
             const { id } = req.params;
 
-            const userOrders = await Checkout.find({ userId: id });
+            const userOrders = await Checkout.find({ userId: id }).sort({ createdAt: -1 });
 
             if (!userOrders || userOrders.length === 0) {
                 return res.status(404).json({ message: "No orders found for this user." });
@@ -94,7 +117,93 @@ const checkoutController = {
             res.status(500).json({ message: "Internal server error" });
         }
     },
+    getSellerOrder: async (req, res) => {
+        try {
+            const { id } = req.params;
+
+            const sellerOrders = await Checkout.find({ sellerId: id }).sort({ createdAt: -1 });
+
+            if (!sellerOrders || sellerOrders.length === 0) {
+                return res.status(404).json({ message: "No orders found for this user." });
+            }
+
+            res.status(200).json({ orders: sellerOrders });
+        } catch (error) {
+            console.error("Error fetching orders:", error);
+            res.status(500).json({ message: "Internal server error" });
+        }
+    },
+    checkoutPaymentIntent: async (req, res) => {
+        try {
+            const { amount, currency } = req.body;
+
+            if (!amount || !currency) {
+                return res.status(400).json({ message: "Amount and currency are required." });
+            }
+
+            // Create a payment intent with Stripe
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: amount * 100,
+                currency: currency,
+            });
+
+            // Send the client secret to the frontend
+            res.status(200).json({ clientSecret: paymentIntent.client_secret });
+
+        } catch (error) {
+            console.error('Error creating payment intent:', error);
+            res.status(500).json({ message: 'Internal server error' });
+        }
+    },
+    updateOrderStatus: async (req, res) => {
+        try {
+            const { orderId, status } = req.body;
+            // console.log(req.body);
+
+            const order = await Checkout.findById(orderId);
+
+            if (!order) {
+                return res.status(404).json({ message: "No orders found for this user." });
+            }
+
+            if (status === 'Pending') {
+                order.status = 'Confirmed';
+                await order.save();
+            } else if (status === 'Confirmed') {
+                order.status = 'In Storage';
+                await order.save();
+            } else if (status === 'In Storage') {
+                order.status = 'Out for Delivery';
+                await order.save();
+            } else if (status === 'Out for Delivery') {
+                order.status = 'Delivered';
+                order.paymentTerm = 'Fully Paid';
+                await order.save();
+            }
+            else {
+                console.log('Order status is not Pending, no update performed.');
+            }
+
+            res.status(200).json({ order });
+        } catch (error) {
+            console.error("Error updating order status:", error);
+            res.status(500).json({ message: "Internal server error" });
+        }
+    },
+    getAllOrder: async (req, res) => {
+        try {
+            const orders = await Checkout.find().sort({ createdAt: -1 });
+
+            if (!orders) {
+                return res.status(404).json({ message: "No orders found." });
+            }
+
+            res.status(200).json({ orders });
+        } catch (error) {
+            console.error("Error fetching orders:", error);
+            res.status(500).json({ message: "Internal server error" });
+        }
+    },
 };
 
 module.exports = checkoutController;
-

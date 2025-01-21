@@ -4,6 +4,7 @@ const sendToken = require("../utils/jwtToken");
 const { cloudinary, secretKey } = require('../config/cloudinaryConfig')
 const bcrypt = require("bcryptjs");
 const { isErrored } = require("stream");
+const stripe = require('stripe')(process.env.STRIPE_SECRET);
 
 exports.registerUser = async (req, res, next) => {
   // console.log(req.file);
@@ -22,6 +23,11 @@ exports.registerUser = async (req, res, next) => {
 
   const { name, email, password, role } = req.body;
 
+  const stripeCustomer = await stripe.customers.create({
+    name: name,
+    email: email,
+  });
+
   const user = await User.create({
     name,
     email,
@@ -30,7 +36,53 @@ exports.registerUser = async (req, res, next) => {
       public_id: result.public_id,
       url: result.url,
     },
+    stripeCustomerId: stripeCustomer.id,
     isDeleted: false,
+  });
+
+  if (!user) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to create an account",
+    });
+  }
+
+  sendToken(user, 200, res);
+};
+
+exports.createUser = async (req, res, next) => {
+  // console.log(req.file);
+  // console.log(req.body);
+  const result = await cloudinary.v2.uploader.upload(
+    req.file.path,
+    {
+      folder: "avatars",
+      width: 200,
+      crop: "scale",
+    },
+    (err, res) => {
+      console.log(err, res);
+    }
+  );
+
+  const { name, email, password, role } = req.body;
+
+  const stripeCustomer = await stripe.customers.create({
+    name: name,
+    email: email,
+  });
+
+  const user = await User.create({
+    name,
+    email,
+    password,
+    avatar: {
+      public_id: result.public_id,
+      url: result.url,
+    },
+    stripeCustomerId: stripeCustomer.id,
+    isDeleted: false,
+    role: role,
   });
 
   if (!user) {
@@ -143,6 +195,86 @@ exports.addUserAddress = async (req, res, next) => {
     res.status(500).json({
       success: false,
       message: "Internal server error.",
+    });
+  }
+};
+
+exports.getAllUsers = async (req, res, next) => {
+  try {
+    const users = await User.find().sort({ createdAt: -1 });
+    // console.log(users)
+    return res.status(200).json({
+      success: true,
+      users,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+exports.updateUser = async (req, res, next) => {
+  try {
+    const { _id, name, email, role } = req.body
+    let user = await User.findById({ "_id": _id });
+
+    const imageUrl = req.file.path;
+
+    const result = await cloudinary.uploader.upload(imageUrl, {
+      folder: 'avatars',
+      width: 150,
+      crop: "scale"
+    });
+
+    user.name = name;
+    user.email = email;
+    user.role = role;
+    user.image = { public_id: result.public_id, url: result.secure_url };
+
+    // console.log(user)
+
+    user = await User.findByIdAndUpdate(_id, user, {
+      new: true,
+      runValidators: true,
+      useFindAndModify: false
+    });
+
+    return res.status(200).json({
+      success: true,
+      user
+    });
+  } catch (error) {
+    console.error(error.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Update User Server Error'
+    });
+  }
+};
+
+exports.deleteUser = async (req, res, next) => {
+  try {
+    const { id } = req.params; 
+    const user = await User.findById(id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+    
+    await User.findByIdAndDelete(id);
+
+    return res.status(200).json({
+      success: true,
+      message: 'User successfully deleted',
+    });
+  } catch (error) {
+    console.error(error.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Delete User Server Error',
     });
   }
 };

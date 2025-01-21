@@ -47,7 +47,7 @@ const checkoutSchema = new mongoose.Schema({
         ref: 'User',
         required: true,
     },
-    products: [productSchema], // Array of products being purchased
+    products: [productSchema],
     deliveryAddress: {
         type: addressSchema,
         required: true,
@@ -65,10 +65,26 @@ const checkoutSchema = new mongoose.Schema({
         type: Date,
         default: Date.now,
     },
+    paymentTerm: {
+        type: String,
+        enum: ['Fully Paid', 'Not Paid'],
+        default: 'Not Payed',
+    },
+    orderLocation: {
+
+    },
     status: {
         type: String,
-        enum: ['Pending', 'Completed', 'Cancelled'],
+        enum: ['Pending', 'Confirmed', 'In Storage','On Storage', 'Out for Delivery', 'Delivered', 'Cancelled'],
         default: 'Pending',
+    },
+    isDeleted: {
+        type: Boolean,
+        default: false,
+    },
+    createdAt: {
+        type: Date,
+        default: Date.now,
     },
 });
 

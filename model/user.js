@@ -54,8 +54,11 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["seller", "buyer", "admin"],
+      enum: ["seller", "buyer", "admin", 'super admin'],
       default: "buyer",
+    },
+    stripeCustomerId: {
+      type: String,
     },
     isDeleted: {
       type: Boolean,
@@ -105,4 +108,3 @@ userSchema.methods.getResetPasswordToken = function () {
 };
 
 module.exports = mongoose.model("User", userSchema);
-

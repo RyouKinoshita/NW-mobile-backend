@@ -1,16 +1,15 @@
 const Checkout = require("../model/checkout");
 const Product = require("../model/product");
 const User = require("../model/user");
-const stripe = require('stripe')(process.env.STRIPE_SECRET);
+const stripe = require('stripe')
 
 const checkoutController = {
     createPaymentIntent: async (req, res) => {
         try {
-            const { amount, currency, userId } = req.body;
-
-            // Create the payment intent and associate it with the customer
+            const { amount, currency, userId, sellerId } = req.body;
             try {
                 const user = await User.findById(userId);
+                const seller = await User.findById(sellerId);
 
                 if (!user) {
                     return res.status(404).json({ message: 'User not found' });
@@ -18,11 +17,18 @@ const checkoutController = {
 
                 const customerId = user.stripeCustomerId;
                 // console.log(customerId)
-
                 if (!customerId) {
                     return res.status(400).json({ message: 'No Stripe customer ID found for this user' });
                 }
-                const paymentIntent = await stripe.paymentIntents.create({
+
+                const sellerStripeKey = seller.stripeSecretKey;
+                if (!sellerStripeKey) {
+                    return res.status(400).json({ message: 'User does not have a Stripe secret key' });
+                }
+
+                const sellerStripe = stripe(sellerStripeKey);
+
+                const paymentIntent = await sellerStripe.paymentIntents.create({
                     amount: amount,
                     currency: 'php',
                     customer: customerId,
@@ -75,7 +81,7 @@ const checkoutController = {
 
                 if (product.sack < sackCount) {
                     return res.status(400).json({
-                        message: `Not enough stock for ${product.name}. Only ${product.sack} sacks available.`,
+                        message:` Not enough stock for ${product.name}. Only ${product.sack} sacks available.`,
                     });
                 }
                 product.sack -= sackCount;
@@ -135,14 +141,22 @@ const checkoutController = {
     },
     checkoutPaymentIntent: async (req, res) => {
         try {
-            const { amount, currency } = req.body;
+            const { amount, currency, sellerId } = req.body;
 
+            const seller = await User.findById(sellerId);
+
+            const sellerStripeKey = seller.stripeSecretKey;
+            if (!sellerStripeKey) {
+                return res.status(400).json({ message: 'User does not have a Stripe secret key' });
+            }
+
+            const sellerStripe = stripe(sellerStripeKey);
             if (!amount || !currency) {
                 return res.status(400).json({ message: "Amount and currency are required." });
             }
 
             // Create a payment intent with Stripe
-            const paymentIntent = await stripe.paymentIntents.create({
+            const paymentIntent = await sellerStripe.paymentIntents.create({
                 amount: amount * 100,
                 currency: currency,
             });
@@ -170,9 +184,6 @@ const checkoutController = {
                 order.status = 'Confirmed';
                 await order.save();
             } else if (status === 'Confirmed') {
-                order.status = 'In Storage';
-                await order.save();
-            } else if (status === 'In Storage') {
                 order.status = 'Out for Delivery';
                 await order.save();
             } else if (status === 'Out for Delivery') {

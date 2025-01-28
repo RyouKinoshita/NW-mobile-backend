@@ -60,6 +60,12 @@ const userSchema = new mongoose.Schema(
     stripeCustomerId: {
       type: String,
     },
+    stripeSecretKey: {
+      type: String,
+    },
+    stripePublishableKey: {
+      type: String,
+    },
     isDeleted: {
       type: Boolean,
       default: false,

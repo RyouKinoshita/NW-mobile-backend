@@ -75,7 +75,7 @@ const checkoutSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['Pending', 'Confirmed', 'In Storage','On Storage', 'Out for Delivery', 'Delivered', 'Cancelled'],
+        enum: ['Pending', 'Confirmed', 'Out for Delivery', 'Delivered', 'Cancelled'],
         default: 'Pending',
     },
     isDeleted: {

@@ -254,7 +254,7 @@ exports.updateUser = async (req, res, next) => {
 
 exports.deleteUser = async (req, res, next) => {
   try {
-    const { id } = req.params; 
+    const { id } = req.params;
     const user = await User.findById(id);
 
     if (!user) {
@@ -263,7 +263,7 @@ exports.deleteUser = async (req, res, next) => {
         message: 'User not found',
       });
     }
-    
+
     await User.findByIdAndDelete(id);
 
     return res.status(200).json({
@@ -276,5 +276,54 @@ exports.deleteUser = async (req, res, next) => {
       success: false,
       message: 'Delete User Server Error',
     });
+  }
+};
+
+exports.setStripeKeys = async (req, res, next) => {
+  try {
+    const { _id, stripeSecretKey, stripePublishableKey } = req.body
+    let user = await User.findById({ "_id": _id });
+
+    user.stripeSecretKey = stripeSecretKey;
+    user.stripePublishableKey = stripePublishableKey;
+
+    // console.log(user)
+
+    user = await User.findByIdAndUpdate(_id, user, {
+      new: true,
+      runValidators: true,
+      useFindAndModify: false
+    });
+
+    return res.status(200).json({
+      success: true,
+      user
+    });
+  } catch (error) {
+    console.error(error.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Update User Server Error'
+    });
+  }
+};
+exports.getPublishableKey = async (req, res, next) => {
+  const { id } = req.params;
+  // console.log(id)
+  try {
+    if (!id) {
+      return res.status(400).json({ message: "Seller ID is required." });
+    }
+    const seller = await User.findById(id);
+    if (!seller) {
+      return res.status(404).json({ message: "Seller not found." });
+    }
+    if (!seller.stripePublishableKey) {
+      return res.status(404).json({ message: "Stripe publishable key not found for this seller." });
+    }
+    res.status(200).json({ publishableKey: seller.stripePublishableKey });
+  } catch (error) {
+    console.error("Error fetching publishable key:", error);
+    res.status(500).json({ message: "Internal server error.", error: error.message });
   }
 };

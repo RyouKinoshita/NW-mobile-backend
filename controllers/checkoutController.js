@@ -76,12 +76,12 @@ const checkoutController = {
 
                 const product = await Product.findById(productId);
                 if (!product) {
-                    return res.status(404).json({ message: `Product with ID ${productId} not found. `});
+                    return res.status(404).json({ message: `Product with ID ${productId} not found. ` });
                 }
 
                 if (product.sack < sackCount) {
                     return res.status(400).json({
-                        message:` Not enough stock for ${product.name}. Only ${product.sack} sacks available.`,
+                        message: `Not enough stock for ${product.name}. Only ${product.sack} sacks available.`,
                     });
                 }
                 product.sack -= sackCount;
@@ -141,9 +141,10 @@ const checkoutController = {
     },
     checkoutPaymentIntent: async (req, res) => {
         try {
-            const { amount, currency, sellerId } = req.body;
+            const { amount, currency, userId, sellerId } = req.body;
 
             const seller = await User.findById(sellerId);
+            // const user = await User.findById(userId);
 
             const sellerStripeKey = seller.stripeSecretKey;
             if (!sellerStripeKey) {
@@ -159,6 +160,7 @@ const checkoutController = {
             const paymentIntent = await sellerStripe.paymentIntents.create({
                 amount: amount * 100,
                 currency: currency,
+                // customer: user,
             });
 
             // Send the client secret to the frontend

@@ -54,26 +54,35 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["seller", "buyer", "admin", 'super admin'],
-      default: "buyer",
-    },
-    stripeCustomerId: {
-      type: String,
-    },
-    stripeSecretKey: {
-      type: String,
-    },
-    stripePublishableKey: {
-      type: String,
+      enum: ["stall", 'user', 'super admin'],
+      default: "farmer",
     },
     isDeleted: {
       type: Boolean,
       default: false,
     },
-    // createdAt: {
-    //     type: Date,
-    //     default: Date.now
-    // },
+    stall: {
+      stallNumber: {
+        type: String,
+        required: function () {
+          return this.role === "stall";
+        },
+      },
+      stallImage: {
+        public_id: {
+          type: String,
+          required: function () {
+            return this.role === "stall";
+          },
+        },
+        url: {
+          type: String,
+          required: function () {
+            return this.role === "stall";
+          },
+        },
+      },
+    },
     resetPasswordToken: String,
     resetPasswordExpire: Date,
   },

@@ -23,10 +23,10 @@ exports.registerUser = async (req, res, next) => {
 
   const { name, email, password, role } = req.body;
 
-  const stripeCustomer = await stripe.customers.create({
-    name: name,
-    email: email,
-  });
+  // const stripeCustomer = await stripe.customers.create({
+  //   name: name,
+  //   email: email,
+  // });
 
   const user = await User.create({
     name,
@@ -37,7 +37,7 @@ exports.registerUser = async (req, res, next) => {
       url: result.url,
     },
     role,
-    stripeCustomerId: stripeCustomer.id,
+    // stripeCustomerId: stripeCustomer.id,
     isDeleted: false,
   });
 

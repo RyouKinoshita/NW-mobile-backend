@@ -52,36 +52,33 @@ const userSchema = new mongoose.Schema(
         required: true,
       },
     },
+    stall: {
+      stallDescription: {
+        type: String,
+      },
+      stallAddress: {
+        type: String,
+      },
+      stallNumber: {
+        type: String,
+      },
+      stallImage: {
+        public_id: {
+          type: String,
+        },
+        url: {
+          type: String,
+        },
+      },
+    },
     role: {
       type: String,
-      enum: ["stall", 'user', 'super admin'],
+      enum: ["vendor", 'farmer', 'composter', 'super admin'],
       default: "farmer",
     },
     isDeleted: {
       type: Boolean,
       default: false,
-    },
-    stall: {
-      stallNumber: {
-        type: String,
-        required: function () {
-          return this.role === "stall";
-        },
-      },
-      stallImage: {
-        public_id: {
-          type: String,
-          required: function () {
-            return this.role === "stall";
-          },
-        },
-        url: {
-          type: String,
-          required: function () {
-            return this.role === "stall";
-          },
-        },
-      },
     },
     resetPasswordToken: String,
     resetPasswordExpire: Date,

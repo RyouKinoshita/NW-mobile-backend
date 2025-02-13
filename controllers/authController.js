@@ -328,3 +328,84 @@ exports.getPublishableKey = async (req, res, next) => {
     res.status(500).json({ message: "Internal server error.", error: error.message });
   }
 };
+
+exports.getVendorStall = async (req, res, next) => {
+  try {
+    const userId = req.params.id;
+
+    const user = await User.findById(userId).select("-password");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      user,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+exports.addVendorStall = async (req, res, next) => {
+  try {
+    const { stallDescription, stallAddress, stallNumber } = req.body;
+    const _id = req.params.id;
+
+    console.log("Vendor ID:", _id);
+
+    if (!_id) {
+      return res.status(400).json({ success: false, message: "Vendor ID is required." });
+    }
+
+    const user = await User.findById(_id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found." });
+    }
+
+    let stallImage = {};
+
+    if (req.file) {
+      const result = await cloudinary.v2.uploader.upload(req.file.path, {
+        folder: "stalls",
+        width: 400,
+        crop: "scale",
+      });
+
+      stallImage = {
+        public_id: result.public_id,
+        url: result.secure_url,
+      };
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      _id,
+      {
+        stall: { stallDescription, stallAddress, stallNumber, stallImage },
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({ success: false, message: "User not found." });
+    }
+    console.log(updatedUser,'Updated user')
+
+    res.status(200).json({
+      success: true,
+      message: "Stall added successfully.",
+      user: updatedUser,
+    });
+  } catch (error) {
+    console.error("Error adding stall:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error.",
+    });
+  }
+};

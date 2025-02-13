@@ -13,7 +13,9 @@ const {
   updateUser,
   deleteUser,
   setStripeKeys,
-  getPublishableKey
+  getPublishableKey,
+  getVendorStall,
+  addVendorStall
 } = require("../controllers/authController");
 
 
@@ -28,5 +30,7 @@ router.get("/get-publishable-key/:id", getPublishableKey);
 router.get("/get-user/:id", getUser);
 router.put("/add-address", addUserAddress);
 router.get("/get-all-users", getAllUsers);
+router.get("/vendor/:id", getVendorStall);
+router.post("/vendor/add-stall/:id", addVendorStall);
 
 module.exports = router;

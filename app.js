@@ -3,8 +3,8 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const connectDB = require('./config/dbConfig');
 const auth = require('./routes/auth');
-const product = require('./routes/productRoutes');
-const order = require('./routes/orderRoutes');
+// const product = require('./routes/productRoutes');
+// const order = require('./routes/orderRoutes');
 
 
 const app = express();
@@ -22,8 +22,8 @@ connectDB();
 
 // Routes
 app.use("/api/v1", auth);
-app.use("/api/v1/product", product);
-app.use("/api/v1/order", order);
+// app.use("/api/v1/product", product);
+// app.use("/api/v1/order", order);
 
 // Start server
 app.listen(port, () => {

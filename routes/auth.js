@@ -15,7 +15,8 @@ const {
   setStripeKeys,
   getPublishableKey,
   getVendorStall,
-  addVendorStall
+  addVendorStall,
+  getAllStalls
 } = require("../controllers/authController");
 
 
@@ -30,7 +31,8 @@ router.get("/get-publishable-key/:id", getPublishableKey);
 router.get("/get-user/:id", getUser);
 router.put("/add-address", addUserAddress);
 router.get("/get-all-users", getAllUsers);
+router.get("/get-all-stalls", getAllStalls);
 router.get("/vendor/:id", getVendorStall);
-router.post("/vendor/add-stall/:id", addVendorStall);
+router.put("/vendor/add-stall/:id", upload.single("avatar"), addVendorStall);
 
 module.exports = router;

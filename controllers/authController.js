@@ -333,18 +333,18 @@ exports.getVendorStall = async (req, res, next) => {
   try {
     const userId = req.params.id;
 
-    const user = await User.findById(userId).select("-password");
+    const user = await User.findById(userId).select("stall");
 
-    if (!user) {
+    if (!user || !user.stall) {
       return res.status(404).json({
         success: false,
-        message: "User not found",
+        message: "Stall not found for this user",
       });
     }
 
     return res.status(200).json({
       success: true,
-      user,
+      stall: user.stall,
     });
   } catch (error) {
     console.error(error);
@@ -357,7 +357,11 @@ exports.addVendorStall = async (req, res, next) => {
     const { stallDescription, stallAddress, stallNumber } = req.body;
     const _id = req.params.id;
 
-    console.log("Vendor ID:", _id);
+    // console.log("Vendor ID:", _id);
+    // console.log("Vendor stallDescription:", stallDescription);
+    // console.log("Vendor stallAddress:", stallAddress);
+    // console.log("Vendor stallNumber:", stallNumber);
+    // console.log("Vendor Image:", req.file);
 
     if (!_id) {
       return res.status(400).json({ success: false, message: "Vendor ID is required." });
@@ -385,16 +389,14 @@ exports.addVendorStall = async (req, res, next) => {
 
     const updatedUser = await User.findByIdAndUpdate(
       _id,
-      {
-        stall: { stallDescription, stallAddress, stallNumber, stallImage },
-      },
+      { $set: { "stall": { stallDescription, stallAddress, stallNumber, stallImage } } },
       { new: true, runValidators: true }
     );
 
     if (!updatedUser) {
       return res.status(404).json({ success: false, message: "User not found." });
     }
-    console.log(updatedUser,'Updated user')
+    console.log(updatedUser, 'Updated user')
 
     res.status(200).json({
       success: true,
@@ -407,5 +409,23 @@ exports.addVendorStall = async (req, res, next) => {
       success: false,
       message: "Internal server error.",
     });
+  }
+};
+
+exports.getAllStalls = async (req, res, next) => {
+  try {
+    const stalls = await User.find({
+      role: "vendor",
+      "stall.stallDescription": { $exists: true, $ne: null },
+    }).select("stall name _id").sort({ createdAt: -1 });
+
+    console.log(stalls)
+    return res.status(200).json({
+      success: true,
+      stalls, // Return only stall data
+    });
+  } catch (error) {
+    console.error("Error fetching stalls:", error);
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 };

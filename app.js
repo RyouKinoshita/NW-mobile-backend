@@ -3,8 +3,8 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const connectDB = require('./config/dbConfig');
 const auth = require('./routes/auth');
-// const product = require('./routes/productRoutes');
-// const order = require('./routes/orderRoutes');
+const sack = require('./routes/sackRoutes');
+const AddToSack = require("./model/addtosack");
 
 
 const app = express();
@@ -15,15 +15,9 @@ app.use(cors());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
-
-// Connect to MongoDB
 connectDB();
-
-
-// Routes
 app.use("/api/v1", auth);
-// app.use("/api/v1/product", product);
-// app.use("/api/v1/order", order);
+app.use("/api/v1/sack", sack);
 
 // Start server
 app.listen(port, () => {

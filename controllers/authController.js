@@ -7,8 +7,6 @@ const { isErrored } = require("stream");
 const stripe = require('stripe')(process.env.STRIPE_SECRET);
 
 exports.registerUser = async (req, res, next) => {
-  // console.log(req.file);
-  // console.log(req.body);
   const result = await cloudinary.v2.uploader.upload(
     req.file.path,
     {
@@ -23,11 +21,6 @@ exports.registerUser = async (req, res, next) => {
 
   const { name, email, password, role } = req.body;
 
-  // const stripeCustomer = await stripe.customers.create({
-  //   name: name,
-  //   email: email,
-  // });
-
   const user = await User.create({
     name,
     email,
@@ -37,7 +30,6 @@ exports.registerUser = async (req, res, next) => {
       url: result.url,
     },
     role,
-    // stripeCustomerId: stripeCustomer.id,
     isDeleted: false,
   });
 
@@ -230,9 +222,9 @@ exports.updateUser = async (req, res, next) => {
     user.name = name;
     user.email = email;
     user.role = role;
-    user.image = { public_id: result.public_id, url: result.secure_url };
+    user.avatar = { public_id: result.public_id, url: result.secure_url };
 
-    // console.log(user)
+    // console.log(user.avatar)
 
     user = await User.findByIdAndUpdate(_id, user, {
       new: true,
@@ -357,12 +349,6 @@ exports.addVendorStall = async (req, res, next) => {
     const { stallDescription, stallAddress, stallNumber } = req.body;
     const _id = req.params.id;
 
-    // console.log("Vendor ID:", _id);
-    // console.log("Vendor stallDescription:", stallDescription);
-    // console.log("Vendor stallAddress:", stallAddress);
-    // console.log("Vendor stallNumber:", stallNumber);
-    // console.log("Vendor Image:", req.file);
-
     if (!_id) {
       return res.status(400).json({ success: false, message: "Vendor ID is required." });
     }
@@ -389,7 +375,7 @@ exports.addVendorStall = async (req, res, next) => {
 
     const updatedUser = await User.findByIdAndUpdate(
       _id,
-      { $set: { "stall": { stallDescription, stallAddress, stallNumber, stallImage } } },
+      { $set: { "stall": { stallDescription, stallAddress, stallNumber, stallImage, user: _id } } },
       { new: true, runValidators: true }
     );
 
@@ -417,7 +403,7 @@ exports.getAllStalls = async (req, res, next) => {
     const stalls = await User.find({
       role: "vendor",
       "stall.stallDescription": { $exists: true, $ne: null },
-    }).select("stall name _id").sort({ createdAt: -1 });
+    }).select("stall name _id");
 
     console.log(stalls)
     return res.status(200).json({

@@ -62,6 +62,9 @@ const userSchema = new mongoose.Schema(
       stallNumber: {
         type: String,
       },
+      stallHours: {
+        type: String,
+      },
       stallImage: {
         public_id: {
           type: String,
@@ -74,10 +77,15 @@ const userSchema = new mongoose.Schema(
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
       },
+      status: {
+        type: String,
+        enum: ["open", 'close'],
+        default: "open",
+      }
     },
     role: {
       type: String,
-      enum: ["vendor", 'farmer', 'composter', 'super admin'],
+      enum: ["vendor", 'farmer', 'composter', 'admin'],
       default: "farmer",
     },
     isDeleted: {

@@ -54,3 +54,4 @@ const sackSchema = new mongoose.Schema({
 });
 
 module.exports = mongoose.model("Sack", sackSchema);
+

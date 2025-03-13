@@ -52,7 +52,7 @@ const PickupSchema = new mongoose.Schema({
     }],
     status: {
         type: String,
-        enum: ["pending", "completed", "canceled"],
+        enum: ["pending", "pickup", "completed", "canceled"],
         default: "pending"
     },
     totalKilo: {
@@ -65,7 +65,7 @@ const PickupSchema = new mongoose.Schema({
         type: Date,
         default: () => {
             const now = new Date();
-            return new Date(now.getTime() + 8 * 60 * 60 * 1000); 
+            return new Date(now.getTime() + 8 * 60 * 60 * 1000);
         }
     }
 });

@@ -346,7 +346,7 @@ exports.getVendorStall = async (req, res, next) => {
 
 exports.addVendorStall = async (req, res, next) => {
   try {
-    const { stallDescription, stallAddress, stallNumber } = req.body;
+    const { stallDescription, stallAddress, stallNumber, stallHours } = req.body;
     const _id = req.params.id;
 
     if (!_id) {
@@ -375,14 +375,14 @@ exports.addVendorStall = async (req, res, next) => {
 
     const updatedUser = await User.findByIdAndUpdate(
       _id,
-      { $set: { "stall": { stallDescription, stallAddress, stallNumber, stallImage, user: _id } } },
+      { $set: { "stall": { stallDescription, stallAddress, stallNumber, stallImage, stallHours, user: _id } } },
       { new: true, runValidators: true }
     );
 
     if (!updatedUser) {
       return res.status(404).json({ success: false, message: "User not found." });
     }
-    console.log(updatedUser, 'Updated user')
+    // console.log(updatedUser, 'Updated user')
 
     res.status(200).json({
       success: true,
@@ -412,6 +412,27 @@ exports.getAllStalls = async (req, res, next) => {
     });
   } catch (error) {
     console.error("Error fetching stalls:", error);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+exports.stallStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const user = await User.findByIdAndUpdate(
+      id,
+      { "stall.status": status },
+      { new: true }
+    );
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    return res.status(200).json({ success: true, stallStatus: user.stall.status });
+  } catch (error) {
+    console.error("Error Updating Stall Status:", error);
     return res.status(500).json({ error: "Internal Server Error" });
   }
 };

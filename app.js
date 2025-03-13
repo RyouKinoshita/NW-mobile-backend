@@ -4,8 +4,7 @@ const cors = require('cors');
 const connectDB = require('./config/dbConfig');
 const auth = require('./routes/auth');
 const sack = require('./routes/sackRoutes');
-const AddToSack = require("./model/addtosack");
-
+const notification = require("./routes/notification");
 
 const app = express();
 const port = process.env.PORT || 8000;
@@ -18,6 +17,7 @@ app.use(bodyParser.json());
 connectDB();
 app.use("/api/v1", auth);
 app.use("/api/v1/sack", sack);
+app.use("/api/v1/notifications", notification);
 
 // Start server
 app.listen(port, () => {

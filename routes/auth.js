@@ -16,7 +16,8 @@ const {
   getPublishableKey,
   getVendorStall,
   addVendorStall,
-  getAllStalls
+  getAllStalls,
+  stallStatus
 } = require("../controllers/authController");
 
 
@@ -30,6 +31,7 @@ router.get("/logout", logout);
 router.get("/get-publishable-key/:id", getPublishableKey);
 router.get("/get-user/:id", getUser);
 router.put("/add-address", addUserAddress);
+router.put("/stall-status/:id", stallStatus);
 router.get("/get-all-users", getAllUsers);
 router.get("/get-all-stalls", getAllStalls);
 router.get("/vendor/:id", getVendorStall);

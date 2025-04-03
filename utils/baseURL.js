@@ -1,3 +1,3 @@
-const baseURL = "http://192.168.236.104:5001";
+const baseURL = "https://machinelearning-5oc6.onrender.com";
 
 module.exports = baseURL;

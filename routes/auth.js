@@ -37,4 +37,4 @@ router.get("/get-all-stalls", getAllStalls);
 router.get("/vendor/:id", getVendorStall);
 router.put("/vendor/add-stall/:id", upload.single("avatar"), addVendorStall);
 
-module.exports = router;
+module.exports = router;  

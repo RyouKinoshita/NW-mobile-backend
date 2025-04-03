@@ -12,7 +12,7 @@ const notificationSchema = new mongoose.Schema({
     },
     type: {
         type: String,
-        enum: ["new_sack", "pickup"],
+        enum: ["new_sack", "pickup", "trashed"],
         required: true,
     },
     isRead: {
@@ -25,4 +25,4 @@ const notificationSchema = new mongoose.Schema({
     },
 });
 
-module.exports = mongoose.model("notification", notificationSchema);
+module.exports = mongoose.model("notification", notificationSchema); 

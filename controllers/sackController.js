@@ -45,7 +45,7 @@ const sackController = {
             // Create notifications for farmers
             const notifications = farmers.map(farmer => ({
                 user: farmer._id,
-                message:`New sack posted by ${sellerData.name} at Stall #${stallNumber}.`,
+                message: `New sack posted by ${sellerData.name} at Stall #${stallNumber}.`,
                 type: "new_sack"
             }));
 

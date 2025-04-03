@@ -4,6 +4,8 @@ const cors = require('cors');
 const connectDB = require('./config/dbConfig');
 const auth = require('./routes/auth');
 const sack = require('./routes/sackRoutes');
+const waste = require('./routes/wasteRoutes');
+const machinelearning = require('./routes/mlRoutes');
 const notification = require("./routes/notification");
 
 const app = express();
@@ -17,6 +19,8 @@ app.use(bodyParser.json());
 connectDB();
 app.use("/api/v1", auth);
 app.use("/api/v1/sack", sack);
+app.use("/api/v1/waste", waste);
+app.use("/api/v1/ml", machinelearning);
 app.use("/api/v1/notifications", notification);
 
 // Start server

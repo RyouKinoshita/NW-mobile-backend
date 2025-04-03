@@ -40,7 +40,7 @@ const sackSchema = new mongoose.Schema({
     ],
     status: {
         type: String,
-        enum: ['posted', 'pickup', 'claimed', 'spoiled'],
+        enum: ['posted', 'pickup', 'claimed', 'spoiled', 'trashed'],
         default: 'posted',
     },
     isDeleted: {

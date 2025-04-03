@@ -45,7 +45,7 @@ const sackController = {
             // Create notifications for farmers
             const notifications = farmers.map(farmer => ({
                 user: farmer._id,
-                message:`New sack posted by ${sellerData.name} at Stall #${stallNumber}.`,
+                message:` New sack posted by ${sellerData.name} at Stall #${stallNumber}.`,
                 type: "new_sack"
             }));
 
@@ -93,7 +93,7 @@ const sackController = {
                         dbSpoil: item.dbSpoil,
                         description: item.description,
                         location: item.location,
-                        status: item.location,
+                        status: item.status,
                         images: item.images,
                     });
 
@@ -134,15 +134,33 @@ const sackController = {
 
             const nowUTC8 = new Date(Date.now() + 8 * 60 * 60 * 1000);
 
-            // Update status for spoiled sacks
-            sacks = sacks.map(sack => {
+            // Update status and create notifications for trashed sacks
+            const notifications = [];
+            const updatedSacks = sacks.map(sack => {
                 const spoilageDate = new Date(sack.dbSpoil);
-                if (spoilageDate.getTime() <= nowUTC8.getTime() && sack.status !== "spoiled") {
+                const daysPast = (nowUTC8 - spoilageDate) / (1000 * 60 * 60 * 24); // Convert ms to days
+
+                if (daysPast >= 3 && sack.status !== "trashed") {
+                    sack.status = "trashed";
+
+                    // Create a notification for the seller
+                    notifications.push({
+                        user: sack.seller,
+                        message:` Your sack has been trashed: ${sack.description}`,
+                        type: "trashed",
+                    });
+                } else if (spoilageDate.getTime() <= nowUTC8.getTime() && sack.status !== "spoiled" && sack.status !== "claimed") {
                     sack.status = "spoiled";
                 }
+
                 return sack;
-            });
-            await Promise.all(sacks.map(sack => sack.save()));
+            }).filter(sack => sack.isModified("status")); // Save only modified sacks
+
+            await Promise.all(updatedSacks.map(sack => sack.save()));
+
+            if (notifications.length > 0) {
+                await Notification.insertMany(notifications);
+            }
 
             res.status(200).json({ message: "Sacks fetched successfully", sacks });
         } catch (error) {
@@ -153,7 +171,7 @@ const sackController = {
     getAllSacks: async (req, res) => {
         try {
             const sacks = await Sack.find()
-            console.log(sacks)
+            // console.log(sacks)
             return res.status(200).json({ message: "Sacks fetched successfully!", sacks });
         } catch (error) {
             console.error("Fetch All Sacks Error Backend:", error.message);
@@ -253,7 +271,7 @@ const sackController = {
                     await Notification.create({
                         user: sack.seller,
                         type: 'pickup',
-                        message: `Your sack at Stall # ${sack.stallNumber} has been requested for pickup.`,
+                        message: `Your sack at Stall #${sack.stallNumber} has been requested for pickup.`,
                     });
                 })
             );
@@ -282,16 +300,16 @@ const sackController = {
                 return res.status(400).json({ message: "No sack IDs provided" });
             }
 
-            // console.log("Sack IDs:", sackIds);
+            console.log("Sack IDs:", sackIds);
 
             await Sack.updateMany(
                 { _id: { $in: sackIds } },
                 { $set: { status: "posted" } }
             );
 
-            // console.log(sack, 'Sack update post')
-
+            
             const result = await Pickup.findByIdAndDelete(id);
+            console.log(result, 'result')
             res.status(200).json({ message: "pickupSack deleted successfully!" });
         } catch (error) {
             console.error("Error deleting pickupSack:", error);
@@ -329,7 +347,7 @@ const sackController = {
                 return Notification.create({
                     user: sack.seller._id,
                     type: 'pickup',
-                    message: `${userName} is now picking up your sack from Stall #${sack.stallNumber}.`,
+                    message:` ${userName} is on the way to pick up the sack from your Stall #${sack.stallNumber}.`,
                 });
             });
 
@@ -365,21 +383,24 @@ const sackController = {
         try {
             const { id } = req.params;
 
-            const result = await Pickup.findByIdAndUpdate(
-                id,
-                { status: "completed" },
-                { new: true }
-            );
-
-            if (!result) {
+            const pickup = await Pickup.findById(id);
+            if (!pickup) {
                 return res.status(404).json({ message: "Pickup not found!" });
             }
 
-            res.status(200).json({ message: "Pickup was completed successfully!", pickup: result });
+            pickup.status = "completed";
+            await pickup.save();
+
+            const sackIds = pickup.sacks.map(sack => sack.sackId);
+            await Sack.updateMany(
+                { _id: { $in: sackIds } },
+                { $set: { status: "claimed" } }
+            );
+            res.status(200).json({ message: "Pickup and sacks were completed successfully!", pickup });
         } catch (error) {
             console.error("Error in completing pickup:", error);
             return res.status(500).json({ message: "Error in completing pickup!" });
         }
-    },
+    }
 };
 module.exports = sackController;

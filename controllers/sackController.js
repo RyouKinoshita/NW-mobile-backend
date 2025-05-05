@@ -20,6 +20,9 @@ const sackController = {
 
             const { description, kilo, dbSpoil, seller, stallNumber } = req.body;
 
+            // console.log(req.body)
+            // console.log(req.file,'Image')
+
             const createdDate = new Date();
             const spoilDate = new Date(createdDate);
             spoilDate.setDate(spoilDate.getDate() + parseInt(dbSpoil, 10));
@@ -45,7 +48,7 @@ const sackController = {
             // Create notifications for farmers
             const notifications = farmers.map(farmer => ({
                 user: farmer._id,
-                message:` New sack posted by ${sellerData.name} at Stall #${stallNumber}.`,
+                message: ` New sack posted by ${sellerData.name} at Stall #${stallNumber}.`,
                 type: "new_sack"
             }));
 
@@ -131,6 +134,7 @@ const sackController = {
             const { id } = req.params;
 
             let sacks = await Sack.find({ seller: id });
+            // console.log(sacks.length,'Sack')
 
             const nowUTC8 = new Date(Date.now() + 8 * 60 * 60 * 1000);
 
@@ -140,16 +144,16 @@ const sackController = {
                 const spoilageDate = new Date(sack.dbSpoil);
                 const daysPast = (nowUTC8 - spoilageDate) / (1000 * 60 * 60 * 24); // Convert ms to days
 
-                if (daysPast >= 3 && sack.status !== "trashed") {
+                if (daysPast >= 3 && sack.status === "spoiled") {
                     sack.status = "trashed";
 
                     // Create a notification for the seller
                     notifications.push({
                         user: sack.seller,
-                        message:` Your sack has been trashed: ${sack.description}`,
+                        message: ` Your sack has been trashed: ${sack.description}`,
                         type: "trashed",
                     });
-                } else if (spoilageDate.getTime() <= nowUTC8.getTime() && sack.status !== "spoiled" && sack.status !== "claimed") {
+                } else if (spoilageDate.getTime() <= nowUTC8.getTime() && sack.status === "posted") {
                     sack.status = "spoiled";
                 }
 
@@ -218,7 +222,7 @@ const sackController = {
             // console.log(id)
 
             const pickUpSacks = await Pickup.find({ user: id }).sort({ createdAt: -1 });
-            // console.log(pickUpSacks)
+            console.log(pickUpSacks)
             res.status(201).json({ message: "Sacks fetched successfully", pickUpSacks });
         } catch (error) {
             console.error("Fetch All Sacks Error Backend:", error.message);
@@ -307,7 +311,7 @@ const sackController = {
                 { $set: { status: "posted" } }
             );
 
-            
+
             const result = await Pickup.findByIdAndDelete(id);
             console.log(result, 'result')
             res.status(200).json({ message: "pickupSack deleted successfully!" });
@@ -347,7 +351,7 @@ const sackController = {
                 return Notification.create({
                     user: sack.seller._id,
                     type: 'pickup',
-                    message:` ${userName} is on the way to pick up the sack from your Stall #${sack.stallNumber}.`,
+                    message: ` ${userName} is on the way to pick up the sack from your Stall #${sack.stallNumber}.`,
                 });
             });
 
@@ -401,6 +405,27 @@ const sackController = {
             console.error("Error in completing pickup:", error);
             return res.status(500).json({ message: "Error in completing pickup!" });
         }
-    }
+    },
+    rateTransaction: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { rating, review } = req.body;
+
+            const pickup = await Pickup.findById(id);
+            console.log(pickup, 'Pickup')
+            if (!pickup) {
+                return res.status(404).json({ message: "Pickup not found" });
+            }
+            pickup.rating.push(rating);
+            pickup.review.push(review);
+
+            await pickup.save();
+
+            return res.status(200).json({ message: "Review and rating saved successfully", pickup });
+        } catch (error) {
+            console.error("Error in rating transaction:", error);
+            return res.status(500).json({ message: "Error in rating transaction" });
+        }
+    },
 };
 module.exports = sackController;

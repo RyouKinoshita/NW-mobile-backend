@@ -12,7 +12,7 @@ const notificationSchema = new mongoose.Schema({
     },
     type: {
         type: String,
-        enum: ["new_sack", "pickup", "trashed"],
+        enum: ["new_sack", "pickup", "trashed", 'spoiled'],
         required: true,
     },
     isRead: {

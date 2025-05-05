@@ -61,6 +61,16 @@ const PickupSchema = new mongoose.Schema({
     pickupTimestamp: {
         type: Date,
     },
+    review: [
+        {
+            type: String,
+        },
+    ],
+    rating: [
+        {
+            type: Number,
+        },
+    ],
     createdAt: {
         type: Date,
         default: () => {

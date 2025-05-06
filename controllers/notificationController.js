@@ -1,5 +1,6 @@
 const Notification = require("../model/notification");
-const Pickup = require("../model/pickup")
+const Pickup = require("../model/pickup");
+const Sack = require("../model/sack");
 
 exports.getNotifications = async (req, res) => {
     try {
@@ -43,27 +44,27 @@ exports.getNotif = async (req, res) => {
 
 exports.getRequestNotif = async (req, res) => {
     try {
-        const { id } = req.params; // 'id' is the seller's ID, which you're passing from the frontend
+        const { id } = req.params;
 
-        // Query for the Pickup document where any sack's seller matches the provided seller ID
-        const pickup = await Pickup.findOne({
-            "sacks.seller": id
-        });
+        // Get all sacks belonging to this seller
+        const sacks = await Sack.find({ seller: id });
 
-        if (!pickup) {
-            return res.status(404).json({ message: "Seller's pickup record not found." });
+        if (!sacks || sacks.length === 0) {
+            return res.status(404).json({ message: "No sacks found for this seller." });
         }
 
-        // Filter sacks based on their status
-        const pendingSacks = pickup.sacks.filter(sack => sack.status === 'pending');
-        const pickupSacks = pickup.sacks.filter(sack => sack.status === 'pickup');
+        // Count based on status
+        const pickupSacks = sacks.filter(sack => sack.status === 'pickup');
+        const postedSacks = sacks.filter(sack => sack.status === 'posted');
+        const claimedSacks = sacks.filter(sack => sack.status === 'claimed');
 
         res.status(200).json({
-            pendingSacksCount: pendingSacks.length,
-            pickupSacksCount: pickupSacks.length
+            pickupSacksCount: pickupSacks.length,
+            postedSacksCount: postedSacks.length,
+            claimedSacksCount: claimedSacks.length
         });
     } catch (error) {
-        console.log("Error fetching sacks:", error);
+        console.error("Error fetching sacks:", error);
         res.status(500).json({ message: "Error fetching sacks", error: error.message });
     }
 };

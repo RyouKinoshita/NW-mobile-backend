@@ -228,7 +228,7 @@ const sackController = {
             // console.log(id)
 
             const pickUpSacks = await Pickup.find({ user: id }).sort({ createdAt: -1 });
-            // console.log(pickUpSacks)
+            console.log(pickUpSacks)
             res.status(201).json({ message: "Sacks fetched successfully", pickUpSacks });
         } catch (error) {
             console.error("Fetch All Sacks Error Backend:", error.message);

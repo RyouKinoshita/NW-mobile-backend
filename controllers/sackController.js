@@ -155,6 +155,12 @@ const sackController = {
                     });
                 } else if (spoilageDate.getTime() <= nowUTC8.getTime() && sack.status === "posted") {
                     sack.status = "spoiled";
+
+                    notifications.push({
+                        user: sack.seller,
+                        message: `The waste ${sack.description} was spoiled`,
+                        type: "spoiled",
+                    });
                 }
 
                 return sack;

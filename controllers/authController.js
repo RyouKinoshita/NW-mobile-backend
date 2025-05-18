@@ -436,3 +436,13 @@ exports.stallStatus = async (req, res, next) => {
     return res.status(500).json({ error: "Internal Server Error" });
   }
 };
+
+exports.chatUsers = async (req, res, next) => {
+  try {
+    const ids = req.query.ids.split(",");
+    const users = await User.find({ _id: { $in: ids } }).select("name avatar.url");
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching users" });
+  }
+};

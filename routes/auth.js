@@ -17,7 +17,8 @@ const {
   getVendorStall,
   addVendorStall,
   getAllStalls,
-  stallStatus
+  stallStatus,
+  chatUsers
 } = require("../controllers/authController");
 
 
@@ -36,5 +37,6 @@ router.get("/get-all-users", getAllUsers);
 router.get("/get-all-stalls", getAllStalls);
 router.get("/vendor/:id", getVendorStall);
 router.put("/vendor/add-stall/:id", upload.single("avatar"), addVendorStall);
+router.get("/chat-users", chatUsers);
 
 module.exports = router;  

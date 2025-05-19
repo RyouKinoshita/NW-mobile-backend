@@ -398,15 +398,46 @@ const sackController = {
                 return res.status(404).json({ message: "Pickup not found!" });
             }
 
+            const updatedSacks = [];
+            const unclaimedSackIds = [];
+
+            let totalKilo = '';
+
+            for (const item of pickup.sacks) {
+                const sack = await Sack.findById(item.sackId);
+                if (sack.status === "claimed") {
+                    updatedSacks.push(item.sackId);
+                    totalKilo += sack.kilo || 0;
+                } else {
+                    unclaimedSackIds.push(item.sackId);
+                    await Sack.findByIdAndUpdate(item.sackId, { status: "posted" });
+                }
+            }
+
+            pickup.sacks = pickup.sacks.filter(item => {
+                return !unclaimedSackIds
+                    .map(id => id.toString())
+                    .includes(item.sackId.toString());
+            });
+
+            pickup.markModified('sacks');
+
             pickup.status = "completed";
+            pickup.totalKilo = totalKilo;
+
             await pickup.save();
 
-            const sackIds = pickup.sacks.map(sack => sack.sackId);
             await Sack.updateMany(
-                { _id: { $in: sackIds } },
+                { _id: { $in: updatedSacks } },
                 { $set: { status: "claimed" } }
             );
-            res.status(200).json({ message: "Pickup and sacks were completed successfully!", pickup });
+
+            res.status(200).json({
+                message: "Pickup completed. Any unclaimed sacks reverted.",
+                pickup,
+                hadUnclaimed: unclaimedSackIds.length > 0,
+            });
+
         } catch (error) {
             console.error("Error in completing pickup:", error);
             return res.status(500).json({ message: "Error in completing pickup!" });

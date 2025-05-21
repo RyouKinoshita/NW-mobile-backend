@@ -181,8 +181,43 @@ const sackController = {
     getAllSacks: async (req, res) => {
         try {
             const sacks = await Sack.find()
-            // console.log(sacks)
-            return res.status(200).json({ message: "Sacks fetched successfully!", sacks });
+            const nowUTC8 = new Date(Date.now() + 8 * 60 * 60 * 1000);
+            // console.log(sacks,"sacks")
+            // Update status and create notifications for trashed sacks
+            const notifications = [];
+            const updatedSacks = sacks.map(sack => {
+                const spoilageDate = new Date(sack.dbSpoil);
+                const daysPast = (nowUTC8 - spoilageDate) / (1000 * 60 * 60 * 24); // Convert ms to days
+
+                if (daysPast >= 3 && sack.status === "spoiled") {
+                    sack.status = "trashed";
+
+                    // Create a notification for the seller
+                    notifications.push({
+                        user: sack.seller,
+                        message: ` Your sack has been trashed: ${sack.description}`,
+                        type: "trashed",
+                    });
+                } else if (spoilageDate.getTime() <= nowUTC8.getTime() && sack.status === "posted") {
+                    sack.status = "spoiled";
+                    console.log(sack)
+                    notifications.push({
+                        user: sack.seller,
+                        message: `The waste ${sack.description} was spoiled`,
+                        type: "spoiled",
+                    });
+                }
+
+                return sack;
+            }).filter(sack => sack.isModified("status")); // Save only modified sacks
+
+            await Promise.all(updatedSacks.map(sack => sack.save()));
+
+            if (notifications.length > 0) {
+                await Notification.insertMany(notifications);
+            }
+
+            res.status(200).json({ message: "Sacks fetched successfully", sacks });
         } catch (error) {
             console.error("Fetch All Sacks Error Backend:", error.message);
             res.status(500).json({ message: "Fetch Sacks Error Backend" });

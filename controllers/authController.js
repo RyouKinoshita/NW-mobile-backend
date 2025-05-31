@@ -161,7 +161,7 @@ exports.getUser = async (req, res, next) => {
 exports.addUserAddress = async (req, res, next) => {
   try {
     const { _id, lotNum, street, baranggay, city } = req.body;
-
+    console.log(req.body)
     if (!_id || !lotNum || !street || !baranggay || !city) {
       return res.status(400).json({ success: false, message: "All fields are required." });
     }

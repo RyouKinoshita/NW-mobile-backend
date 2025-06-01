@@ -158,7 +158,7 @@ const sackController = {
 
                     notifications.push({
                         user: sack.seller,
-                        message: `The waste ${sack.description} was spoiled`,
+                        message: `The waste ${sack.description} was spoiled ${sack.stallNumber}`,
                         type: "spoiled",
                     });
                 }
@@ -436,19 +436,19 @@ const sackController = {
             const updatedSacks = [];
             const unclaimedSackIds = [];
 
-            let totalKilo = '';
+            let totalKilo = 0;
 
             for (const item of pickup.sacks) {
                 const sack = await Sack.findById(item.sackId);
                 if (sack.status === "claimed") {
                     updatedSacks.push(item.sackId);
-                    totalKilo += sack.kilo || 0;
+                    totalKilo += Number(sack.kilo) || 0;
                 } else {
                     unclaimedSackIds.push(item.sackId);
                     await Sack.findByIdAndUpdate(item.sackId, { status: "posted" });
                 }
             }
-
+            // console.log(totalKilo, 'TotalKilo')
             pickup.sacks = pickup.sacks.filter(item => {
                 return !unclaimedSackIds
                     .map(id => id.toString())

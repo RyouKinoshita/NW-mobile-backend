@@ -103,9 +103,7 @@ exports.loginUser = async (req, res, next) => {
       return res.status(401).json({ message: "Invalid Email or Password" });
     }
     if (user.isDeleted) {
-      return res.status(401).json({
-        message: "Your account has been deactivated. Please contact support.",
-      });
+      return res.status(403).json({ message: "Account has been deleted" });
     }
 
     const isPasswordMatched = await user.comparePassword(password);
@@ -251,26 +249,50 @@ exports.deleteUser = async (req, res, next) => {
     const user = await User.findById(id);
 
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found',
-      });
+      return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    await User.findByIdAndDelete(id);
+    user.isDeleted = true;
+    await user.save();
 
     return res.status(200).json({
       success: true,
-      message: 'User successfully deleted',
+      message: "User soft-deleted successfully",
     });
   } catch (error) {
     console.error(error.message);
     return res.status(500).json({
       success: false,
-      message: 'Delete User Server Error',
+      message: "Delete User Server Error",
     });
   }
 };
+
+exports.restoreUser = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const user = await User.findById(id);
+
+    if (!user || !user.isDeleted) {
+      return res.status(404).json({ success: false, message: "User not found or not deleted" });
+    }
+
+    user.isDeleted = false;
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "User restored successfully",
+    });
+  } catch (error) {
+    console.error(error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Restore User Server Error",
+    });
+  }
+};
+
 
 exports.setStripeKeys = async (req, res, next) => {
   try {

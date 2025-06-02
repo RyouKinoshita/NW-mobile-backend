@@ -18,7 +18,8 @@ const {
   addVendorStall,
   getAllStalls,
   stallStatus,
-  chatUsers
+  chatUsers,
+  restoreUser
 } = require("../controllers/authController");
 
 
@@ -27,6 +28,7 @@ router.post("/create-user", upload.single("avatar"), createUser);
 router.put("/user-update", upload.single("avatar"), updateUser);
 router.put("/set-stripe-keys", setStripeKeys);
 router.delete("/delete-user/:id", deleteUser);
+router.put("/restore-user/:id", restoreUser);
 router.post("/login", loginUser);
 router.get("/logout", logout);
 router.get("/get-publishable-key/:id", getPublishableKey);

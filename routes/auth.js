@@ -19,7 +19,8 @@ const {
   getAllStalls,
   stallStatus,
   chatUsers,
-  restoreUser
+  restoreUser,
+  getRatingsReview
 } = require("../controllers/authController");
 
 
@@ -37,6 +38,7 @@ router.put("/add-address", addUserAddress);
 router.put("/stall-status/:id", stallStatus);
 router.get("/get-all-users", getAllUsers);
 router.get("/get-all-stalls", getAllStalls);
+router.get("/get-ratings-reviews", getRatingsReview);
 router.get("/vendor/:id", getVendorStall);
 router.put("/vendor/add-stall/:id", upload.single("avatar"), addVendorStall);
 router.get("/chat-users", chatUsers);

@@ -1,4 +1,5 @@
 const User = require("../model/user");
+const Pickup = require("../model/pickup");
 const crypto = require("crypto");
 const sendToken = require("../utils/jwtToken");
 const { cloudinary, secretKey } = require('../config/cloudinaryConfig')
@@ -466,5 +467,31 @@ exports.chatUsers = async (req, res, next) => {
     res.json(users);
   } catch (error) {
     res.status(500).json({ message: "Error fetching users" });
+  }
+};
+
+exports.getRatingsReview = async (req, res, next) => {
+  try {
+    const reviewsAndRatings = await Pickup.find({}, "review rating createdAt") // Select only review, rating, and createdAt fields
+      .populate("user", "name email") // You can populate with the user details if needed, or you can skip it
+      .populate("sacks.seller", "name") // Optionally populate seller information for each sack
+      .sort({ createdAt: -1 });
+
+    // // Check if there are reviews available
+    // if (!reviewsAndRatings || reviewsAndRatings.length === 0) {
+    //   return res.status(404).json({ message: "No reviews or ratings found." });
+    // }
+
+    // Send the reviews and ratings in the response
+    return res.status(200).json({
+      success: true,
+      data: reviewsAndRatings,
+    });
+  } catch (error) {
+    console.error("Error fetching reviews and ratings:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error. Could not retrieve reviews and ratings.",
+    });
   }
 };

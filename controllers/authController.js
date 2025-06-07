@@ -369,7 +369,7 @@ exports.getVendorStall = async (req, res, next) => {
 
 exports.addVendorStall = async (req, res, next) => {
   try {
-    const { stallDescription, stallAddress, stallNumber, stallHours } = req.body;
+    const { stallDescription, stallAddress, stallNumber, openHours, closeHours } = req.body;
     const _id = req.params.id;
 
     if (!_id) {
@@ -398,7 +398,7 @@ exports.addVendorStall = async (req, res, next) => {
 
     const updatedUser = await User.findByIdAndUpdate(
       _id,
-      { $set: { "stall": { stallDescription, stallAddress, stallNumber, stallImage, stallHours, user: _id } } },
+      { $set: { "stall": { stallDescription, stallAddress, stallNumber, stallImage, openHours, closeHours, user: _id } } },
       { new: true, runValidators: true }
     );
 
@@ -472,17 +472,11 @@ exports.chatUsers = async (req, res, next) => {
 
 exports.getRatingsReview = async (req, res, next) => {
   try {
-    const reviewsAndRatings = await Pickup.find({}, "review rating createdAt") // Select only review, rating, and createdAt fields
-      .populate("user", "name email") // You can populate with the user details if needed, or you can skip it
-      .populate("sacks.seller", "name") // Optionally populate seller information for each sack
+    const reviewsAndRatings = await Pickup.find({}, "review rating createdAt")
+      .populate("user", "name email")
+      .populate("sacks.seller", "name")
       .sort({ createdAt: -1 });
 
-    // // Check if there are reviews available
-    // if (!reviewsAndRatings || reviewsAndRatings.length === 0) {
-    //   return res.status(404).json({ message: "No reviews or ratings found." });
-    // }
-
-    // Send the reviews and ratings in the response
     return res.status(200).json({
       success: true,
       data: reviewsAndRatings,
@@ -493,5 +487,73 @@ exports.getRatingsReview = async (req, res, next) => {
       success: false,
       message: "Server error. Could not retrieve reviews and ratings.",
     });
+  }
+};
+
+exports.pickupFarmer = async (req, res, next) => {
+  try {
+    const farmerData = await Pickup.aggregate([
+      { $unwind: "$sacks" },
+      {
+        $lookup: {
+          from: "users",
+          localField: "user",
+          foreignField: "_id",
+          as: "userInfo"
+        }
+      },
+      { $unwind: "$userInfo" },
+      { $match: { "userInfo.role": "farmer" } },
+
+      {
+        $group: {
+          _id: {
+            date: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } }
+          },
+          totalKilo: {
+            $sum: { $toDouble: "$sacks.kilo" }
+          }
+        }
+      },
+      { $sort: { "_id.date": 1 } }
+    ]);
+
+    res.status(200).json({ data: farmerData });
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching farmer kilos per day", error });
+  }
+};
+
+exports.pickupComposter = async (req, res, next) => {
+  try {
+    const composterData = await Pickup.aggregate([
+      { $unwind: "$sacks" },
+      {
+        $lookup: {
+          from: "users",
+          localField: "user",
+          foreignField: "_id",
+          as: "userInfo"
+        }
+      },
+      { $unwind: "$userInfo" },
+      { $match: { "userInfo.role": "composter" } },
+
+      {
+        $group: {
+          _id: {
+            date: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } }
+          },
+          totalKilo: {
+            $sum: { $toDouble: "$sacks.kilo" }
+          }
+        }
+      },
+      { $sort: { "_id.date": 1 } }
+    ]);
+
+    res.status(200).json({ data: composterData });
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching composter kilos per day", error });
   }
 };

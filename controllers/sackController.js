@@ -45,11 +45,26 @@ const sackController = {
             const farmers = await User.find({ role: "farmer" });
             const sellerData = await User.findById(seller);
 
+            const { stallDescription, stallAddress, stallImage, status, openHours, closeHours } = sellerData.stall;
+
             // Create notifications for farmers
             const notifications = farmers.map(farmer => ({
                 user: farmer._id,
                 message: ` New sack posted by ${sellerData.name} at Stall #${stallNumber}.`,
-                type: "new_sack"
+                type: "new_sack",
+                stall: {
+                    stallImage: {
+                        public_id: stallImage?.public_id || '',
+                        url: stallImage?.url || '',
+                    },
+                    status,
+                    stallDescription,
+                    stallNumber,
+                    stallAddress,
+                    openHours,
+                    closeHours,
+                    user: sellerData._id,
+                },
             }));
 
             await Notification.insertMany(notifications); // Save notifications
@@ -135,6 +150,8 @@ const sackController = {
 
             let sacks = await Sack.find({ seller: id });
             // console.log(sacks.length,'Sack')
+            const sellerData = await User.findById(id);
+            const { stallDescription, stallAddress, stallImage, status, openHours, closeHours } = sellerData.stall;
 
             const nowUTC8 = new Date(Date.now() + 8 * 60 * 60 * 1000);
 
@@ -152,6 +169,19 @@ const sackController = {
                         user: sack.seller,
                         message: ` Your sack has been trashed: ${sack.description}`,
                         type: "trashed",
+                        stall: {
+                            stallImage: {
+                                public_id: stallImage?.public_id || '',
+                                url: stallImage?.url || '',
+                            },
+                            status,
+                            stallDescription,
+                            stallNumber,
+                            stallAddress,
+                            openHours,
+                            closeHours,
+                            user: sellerData._id,
+                        },
                     });
                 } else if (spoilageDate.getTime() <= nowUTC8.getTime() && sack.status === "posted") {
                     sack.status = "spoiled";
@@ -160,6 +190,19 @@ const sackController = {
                         user: sack.seller,
                         message: `The waste ${sack.description} was spoiled ${sack.stallNumber}`,
                         type: "spoiled",
+                        stall: {
+                            stallImage: {
+                                public_id: stallImage?.public_id || '',
+                                url: stallImage?.url || '',
+                            },
+                            status,
+                            stallDescription,
+                            stallNumber,
+                            stallAddress,
+                            openHours,
+                            closeHours,
+                            user: sellerData._id,
+                        },
                     });
                 }
 
@@ -180,38 +223,78 @@ const sackController = {
     },
     getAllSacks: async (req, res) => {
         try {
-            const sacks = await Sack.find()
+            const sacks = await Sack.find();
             const nowUTC8 = new Date(Date.now() + 8 * 60 * 60 * 1000);
-            // console.log(sacks,"sacks")
-            // Update status and create notifications for trashed sacks
             const notifications = [];
-            const updatedSacks = sacks.map(sack => {
+
+            // Use Promise.all to fetch sellerData for each sack asynchronously
+            const updatedSacks = await Promise.all(sacks.map(async (sack) => {
+                const sellerData = await User.findById(sack.seller);
+                if (!sellerData) return sack; // skip if no seller found
+
+                const {
+                    stallDescription,
+                    stallAddress,
+                    stallImage,
+                    stallNumber,
+                    status,
+                    openHours,
+                    closeHours
+                } = sellerData.stall;
+
                 const spoilageDate = new Date(sack.dbSpoil);
-                const daysPast = (nowUTC8 - spoilageDate) / (1000 * 60 * 60 * 24); // Convert ms to days
+                const daysPast = (nowUTC8 - spoilageDate) / (1000 * 60 * 60 * 24);
 
                 if (daysPast >= 3 && sack.status === "spoiled") {
                     sack.status = "trashed";
 
-                    // Create a notification for the seller
                     notifications.push({
                         user: sack.seller,
-                        message: ` Your sack has been trashed: ${sack.description}`,
+                        message: `Your sack has been trashed: ${sack.description}`,
                         type: "trashed",
+                        stall: {
+                            stallImage: {
+                                public_id: stallImage?.public_id || '',
+                                url: stallImage?.url || '',
+                            },
+                            status,
+                            stallDescription,
+                            stallNumber,
+                            stallAddress,
+                            openHours,
+                            closeHours,
+                            user: sellerData._id,
+                        },
                     });
                 } else if (spoilageDate.getTime() <= nowUTC8.getTime() && sack.status === "posted") {
                     sack.status = "spoiled";
-                    console.log(sack)
+
                     notifications.push({
                         user: sack.seller,
                         message: `The waste ${sack.description} was spoiled`,
                         type: "spoiled",
+                        stall: {
+                            stallImage: {
+                                public_id: stallImage?.public_id || '',
+                                url: stallImage?.url || '',
+                            },
+                            status,
+                            stallDescription,
+                            stallNumber,
+                            stallAddress,
+                            openHours,
+                            closeHours,
+                            user: sellerData._id,
+                        },
                     });
                 }
 
                 return sack;
-            }).filter(sack => sack.isModified("status")); // Save only modified sacks
+            }));
 
-            await Promise.all(updatedSacks.map(sack => sack.save()));
+            // Filter only sacks where status changed (you might want to do this before saving)
+            const sacksToSave = updatedSacks.filter(sack => sack.isModified("status"));
+            await Promise.all(sacksToSave.map(sack => sack.save()));
 
             if (notifications.length > 0) {
                 await Notification.insertMany(notifications);

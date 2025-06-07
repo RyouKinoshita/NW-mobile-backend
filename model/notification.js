@@ -15,6 +15,42 @@ const notificationSchema = new mongoose.Schema({
         enum: ["new_sack", "pickup", "trashed", 'spoiled'],
         required: true,
     },
+    stall: {
+        stallDescription: {
+            type: String,
+        },
+        stallAddress: {
+            type: String,
+        },
+        stallNumber: {
+            type: String,
+        },
+        openHours: {
+            type: String,
+            match: /^((0?[1-9])|(1[0-2])):[0-5][0-9]\s?(am|pm)$/i,
+        },
+        closeHours: {
+            type: String,
+            match: /^((0?[1-9])|(1[0-2])):[0-5][0-9]\s?(am|pm)$/i,
+        },
+        stallImage: {
+            public_id: {
+                type: String,
+            },
+            url: {
+                type: String,
+            },
+        },
+        user: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+        },
+        status: {
+            type: String,
+            enum: ["open", 'close'],
+            default: "open",
+        }
+    },
     isRead: {
         type: Boolean,
         default: false,

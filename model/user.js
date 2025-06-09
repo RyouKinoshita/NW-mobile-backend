@@ -86,7 +86,15 @@ const userSchema = new mongoose.Schema(
         type: String,
         enum: ["open", 'close'],
         default: "open",
-      }
+      },
+      rating: [{
+        value: { type: Number },
+        date: { type: Date, default: Date.now },
+      }],
+      review: [{
+        text: String,
+        date: { type: Date, default: Date.now },
+      }],
     },
     role: {
       type: String,

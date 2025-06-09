@@ -566,21 +566,32 @@ const sackController = {
             const { id } = req.params;
             const { rating, review } = req.body;
 
-            const pickup = await Pickup.findById(id);
-            console.log(pickup, 'Pickup')
-            if (!pickup) {
-                return res.status(404).json({ message: "Pickup not found" });
+            const sack = await Sack.findById(id).populate('seller');
+            if (!sack || !sack.seller) {
+                return res.status(404).json({ message: "Sack or seller not found" });
             }
-            pickup.rating.push(rating);
-            pickup.review.push(review);
 
-            await pickup.save();
+            const seller = await User.findById(sack.seller._id);
+            if (!seller) {
+                return res.status(404).json({ message: "Seller not found" });
+            }
 
-            return res.status(200).json({ message: "Review and rating saved successfully", pickup });
+            if (!Array.isArray(seller.stall.rating)) {
+                seller.stall.rating = [];
+            }
+            if (!Array.isArray(seller.stall.review)) {
+                seller.stall.review = [];
+            }
+            seller.stall.rating.push({ value: rating, date: new Date() });
+            seller.stall.review.push({ text: review, date: new Date() });
+
+            await seller.save();
+
+            return res.status(200).json({ message: "Seller rated successfully", seller });
         } catch (error) {
-            console.error("Error in rating transaction:", error);
-            return res.status(500).json({ message: "Error in rating transaction" });
+            console.error("Error rating seller from sack:", error);
+            return res.status(500).json({ message: "Internal server error" });
         }
-    },
+    }
 };
 module.exports = sackController;

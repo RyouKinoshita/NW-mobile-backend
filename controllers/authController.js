@@ -472,17 +472,19 @@ exports.chatUsers = async (req, res, next) => {
 
 exports.getRatingsReview = async (req, res, next) => {
   try {
-    const reviewsAndRatings = await Pickup.find({}, "review rating createdAt")
-      .populate("user", "name email")
-      .populate("sacks.seller", "name")
+    const usersWithRatings = await User.find({
+      "stall.rating": { $exists: true, $ne: null },
+      "stall.review": { $exists: true, $ne: null }
+    })
+      .select("name email stall.rating stall.review createdAt")
       .sort({ createdAt: -1 });
 
     return res.status(200).json({
       success: true,
-      data: reviewsAndRatings,
+      data: usersWithRatings,
     });
   } catch (error) {
-    console.error("Error fetching reviews and ratings:", error);
+    console.error("Error fetching stall reviews and ratings:", error);
     return res.status(500).json({
       success: false,
       message: "Server error. Could not retrieve reviews and ratings.",

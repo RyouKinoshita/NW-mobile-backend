@@ -22,7 +22,8 @@ const {
   restoreUser,
   getRatingsReview,
   pickupFarmer,
-  pickupComposter
+  pickupComposter,
+  userEditVendor
 } = require("../controllers/authController");
 
 
@@ -43,6 +44,14 @@ router.get("/get-all-stalls", getAllStalls);
 router.get("/get-ratings-reviews", getRatingsReview);
 router.get("/vendor/:id", getVendorStall);
 router.put("/vendor/add-stall/:id", upload.single("avatar"), addVendorStall);
+router.put(
+  "/update-user/:id",
+  upload.fields([
+    { name: "avatar", maxCount: 1 },
+    { name: "stallImage", maxCount: 1 }
+  ]),
+  userEditVendor
+);
 router.get("/chat-users", chatUsers);
 router.get("/admin-farmers-pickup", pickupFarmer);
 router.get("/admin-composters-pickup", pickupComposter);

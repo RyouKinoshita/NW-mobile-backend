@@ -559,3 +559,97 @@ exports.pickupComposter = async (req, res, next) => {
     res.status(500).json({ message: "Error fetching composter kilos per day", error });
   }
 };
+
+exports.userEditVendor = async (req, res) => {
+  try {
+    const userId = req.params.id;
+
+    const {
+      name,
+      email,
+      phone,
+      lotNum,
+      street,
+      baranggay,
+      city,
+      stallDescription,
+      stallAddress,
+      stallNumber,
+      openHours,
+      closeHours,
+    } = req.body;
+
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "Vendor not found" });
+
+    // Handle avatar upload
+    if (req.files?.avatar) {
+      if (user.avatar?.public_id) {
+        await cloudinary.uploader.destroy(user.avatar.public_id);
+      }
+
+      const avatarResult = await cloudinary.uploader.upload(
+        req.files.avatar[0].path, // multer stores file in .path
+        {
+          folder: "avatars",
+          width: 300,
+          crop: "scale",
+        }
+      );
+
+      user.avatar = {
+        public_id: avatarResult.public_id,
+        url: avatarResult.secure_url,
+      };
+    }
+
+    // Handle stallImage upload
+    if (req.files?.stallImage) {
+      if (user.stall?.stallImage?.public_id) {
+        await cloudinary.uploader.destroy(user.stall.stallImage.public_id);
+      }
+
+      const stallResult = await cloudinary.uploader.upload(
+        req.files.stallImage[0].path,
+        {
+          folder: "stall_images",
+          width: 500,
+          crop: "scale",
+        }
+      );
+
+      user.stall.stallImage = {
+        public_id: stallResult.public_id,
+        url: stallResult.secure_url,
+      };
+    }
+
+    // Update other fields
+    user.name = name || user.name;
+    user.email = email || user.email;
+    user.phone = phone || user.phone;
+
+    user.address = { lotNum, street, baranggay, city };
+
+    // Ensure stall object exists
+    if (!user.stall) {
+      user.stall = {};
+    }
+
+    // Individually update stall fields
+    if (stallDescription !== undefined) user.stall.stallDescription = stallDescription;
+    if (stallAddress !== undefined) user.stall.stallAddress = stallAddress;
+    if (stallNumber !== undefined) user.stall.stallNumber = stallNumber;
+    if (openHours !== undefined) user.stall.openHours = openHours;
+    if (closeHours !== undefined) user.stall.closeHours = closeHours;
+
+
+
+    await user.save();
+
+    res.status(200).json({ message: "Vendor updated successfully", user });
+  } catch (error) {
+    console.error("Error updating vendor:", error);
+    res.status(500).json({ message: "Error editing vendor", error });
+  }
+};

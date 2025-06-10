@@ -65,6 +65,10 @@ const sackController = {
                     closeHours,
                     user: sellerData._id,
                 },
+                sackImage: {
+                    public_id: result.public_id,
+                    url: result.url,
+                },
             }));
 
             await Notification.insertMany(notifications); // Save notifications

@@ -51,6 +51,18 @@ const notificationSchema = new mongoose.Schema({
             default: "open",
         }
     },
+    SackImage: [
+        {
+            public_id: {
+                type: String,
+                required: true,
+            },
+            url: {
+                type: String,
+                required: true,
+            },
+        },
+    ],
     isRead: {
         type: Boolean,
         default: false,

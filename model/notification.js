@@ -51,7 +51,7 @@ const notificationSchema = new mongoose.Schema({
             default: "open",
         }
     },
-    images: [
+    SackImage: [
         {
             public_id: {
                 type: String,

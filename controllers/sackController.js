@@ -65,7 +65,7 @@ const sackController = {
                     closeHours,
                     user: sellerData._id,
                 },
-                images: {
+                sackImage: {
                     public_id: result.public_id,
                     url: result.url,
                 },

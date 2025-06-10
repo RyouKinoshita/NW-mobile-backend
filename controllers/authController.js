@@ -582,14 +582,13 @@ exports.userEditVendor = async (req, res) => {
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: "Vendor not found" });
 
-    // Handle avatar upload
     if (req.files?.avatar) {
       if (user.avatar?.public_id) {
         await cloudinary.uploader.destroy(user.avatar.public_id);
       }
 
       const avatarResult = await cloudinary.uploader.upload(
-        req.files.avatar[0].path, // multer stores file in .path
+        req.files.avatar[0].path,
         {
           folder: "avatars",
           width: 300,
@@ -603,7 +602,6 @@ exports.userEditVendor = async (req, res) => {
       };
     }
 
-    // Handle stallImage upload
     if (req.files?.stallImage) {
       if (user.stall?.stallImage?.public_id) {
         await cloudinary.uploader.destroy(user.stall.stallImage.public_id);
@@ -624,26 +622,21 @@ exports.userEditVendor = async (req, res) => {
       };
     }
 
-    // Update other fields
     user.name = name || user.name;
     user.email = email || user.email;
     user.phone = phone || user.phone;
 
     user.address = { lotNum, street, baranggay, city };
 
-    // Ensure stall object exists
     if (!user.stall) {
       user.stall = {};
     }
 
-    // Individually update stall fields
     if (stallDescription !== undefined) user.stall.stallDescription = stallDescription;
     if (stallAddress !== undefined) user.stall.stallAddress = stallAddress;
     if (stallNumber !== undefined) user.stall.stallNumber = stallNumber;
     if (openHours !== undefined) user.stall.openHours = openHours;
     if (closeHours !== undefined) user.stall.closeHours = closeHours;
-
-
 
     await user.save();
 

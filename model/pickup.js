@@ -67,6 +67,9 @@ const PickupSchema = new mongoose.Schema({
             const now = new Date();
             return new Date(now.getTime() + 8 * 60 * 60 * 1000);
         }
+    },
+    pickedUpDate: {
+        type: Date,
     }
 });
 

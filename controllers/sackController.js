@@ -535,7 +535,7 @@ const sackController = {
                     await Sack.findByIdAndUpdate(item.sackId, { status: "posted" });
                 }
             }
-            // console.log(totalKilo, 'TotalKilo')
+
             pickup.sacks = pickup.sacks.filter(item => {
                 return !unclaimedSackIds
                     .map(id => id.toString())
@@ -546,6 +546,7 @@ const sackController = {
 
             pickup.status = "completed";
             pickup.totalKilo = totalKilo;
+            pickup.pickedUpDate = new Date(Date.now() + 8 * 60 * 60 * 1000);
 
             await pickup.save();
 

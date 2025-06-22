@@ -9,6 +9,7 @@ const machinelearning = require('./routes/mlRoutes');
 const notification = require("./routes/notification");
 const track = require("./routes/track");
 const item = require("./routes/productRoutes");
+const push = require("./routes/push");
 
 const app = express();
 const port = process.env.PORT || 8000;
@@ -26,6 +27,7 @@ app.use("/api/v1/ml", machinelearning);
 app.use("/api/v1/notifications", notification);
 app.use("/api/v1/track", track);
 app.use("/api/v1/item", item);
+app.use("/api/v1/push", push);
 
 // Start server
 app.listen(port, () => {

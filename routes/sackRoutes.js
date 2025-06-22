@@ -14,7 +14,10 @@ const {
   getSacks,
   completePickUp,
   getAllSacks,
-  rateTransaction
+  rateTransaction,
+  deleteSack,
+  deleteMySackItem,
+  getAllPickupSackStatus
 } = require("../controllers/sackController");
 
 //
@@ -32,5 +35,8 @@ router.put("/pickup-sack-now/:id", pickupSacksNow);
 router.put("/complete-pickup/:id", completePickUp);
 router.put("/update-status", sackStatusClaimed);
 router.put("/rate-transaction/:id", rateTransaction);
+router.get("/get-all-pickup-sack-status", getAllPickupSackStatus);
 router.delete("/delete-pickuped-sack/:id", deleteAddedSack);
+router.delete("/delete-sack/:id", deleteSack);
+router.delete("/delete-sack/:addToSackId/:sackId", deleteMySackItem);
 module.exports = router;

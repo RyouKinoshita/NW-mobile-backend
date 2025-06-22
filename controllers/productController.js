@@ -227,6 +227,8 @@ const productController = {
         try {
             const { id } = req.params;
 
+            console.log(id, 'Id')
+
             const updatedItem = await Item.findByIdAndUpdate(
                 id,
                 { isDeleted: true },

@@ -5,27 +5,22 @@ const User = require("../model/user");
 const Pickup = require("../model/pickup");
 const { default: mongoose } = require('mongoose');
 const Notification = require("../model/notification");
+const sendPushNotification = require('../utils/sendNotification');
 
 const sackController = {
     createSack: async (req, res) => {
         try {
-            const result = await cloudinary.v2.uploader.upload(
-                req.file.path,
-                {
-                    folder: "avatars",
-                    width: 200,
-                    crop: "scale",
-                }
-            );
+            const result = await cloudinary.v2.uploader.upload(req.file.path, {
+                folder: "avatars",
+                width: 200,
+                crop: "scale",
+            });
 
-            const { description, kilo, dbSpoil, seller, stallNumber } = req.body;
-
-            // console.log(req.body)
-            // console.log(req.file,'Image')
+            const { description, kilo, dbSpoil, seller, stallNumber, sackStatus } = req.body;
 
             const createdDate = new Date();
             const spoilDate = new Date(createdDate);
-            spoilDate.setDate(spoilDate.getDate() + parseInt(dbSpoil, 10));
+            spoilDate.setDate(spoilDate.getDate() + (sackStatus === 'spoiled' ? 1 : parseInt(dbSpoil || 0, 10)));
 
             const sack = await Sack.create({
                 seller,
@@ -34,24 +29,26 @@ const sackController = {
                 dbSpoil: spoilDate,
                 description,
                 location: 'New Public Market, Taytay, Rizal',
-                status: 'posted',
+                status: sackStatus,
                 images: {
                     public_id: result.public_id,
                     url: result.url,
                 },
             });
 
-            // Find all farmers
-            const farmers = await User.find({ role: "farmer" });
             const sellerData = await User.findById(seller);
-
             const { stallDescription, stallAddress, stallImage, status, openHours, closeHours } = sellerData.stall;
 
-            // Create notifications for farmers
-            const notifications = farmers.map(farmer => ({
-                user: farmer._id,
-                message: ` New sack posted by ${sellerData.name} at Stall #${stallNumber}.`,
-                type: "new_sack",
+            const recipients = await User.find({
+                role: { $nin: ['vendor', 'admin'] },
+                _id: { $ne: seller },
+            });
+
+
+            const notifications = recipients.map(user => ({
+                user: user._id,
+                message: `New sack posted by ${sellerData.name} at Stall #${stallNumber}.`,
+                type: sackStatus === 'spoiled' ? 'spoiled' : 'new_sack',
                 stall: {
                     stallImage: {
                         public_id: stallImage?.public_id || '',
@@ -71,20 +68,50 @@ const sackController = {
                 },
             }));
 
-            await Notification.insertMany(notifications); // Save notifications
+            await Notification.insertMany(notifications);
+
+            // ✅ Send push notifications only to farmers and composters — excluding the seller
+            for (const user of recipients) {
+                const isSeller = user._id.toString() === seller.toString();
+                const isTargetRole = ['farmer', 'composter'].includes(user.role);
+
+                if (!isSeller && isTargetRole && user.expoPushToken) {
+                    let title = 'New Sack';
+                    if (sackStatus === 'spoiled' && user.role === 'composter') {
+                        title = 'Spoiled Sack Alert';
+                    } else if (user.role === 'farmer') {
+                        title = 'New Sack Available';
+                    }
+
+                    const body = `New sack posted by ${sellerData.name} at Stall #${stallNumber}.`;
+                    const targetRole = user.role
+                    console.log(`🔔 Notifying: ${user.name} (Role: ${user.role}) | ID: ${user._id} | Token: ${user.expoPushToken}`);
+                    await sendPushNotification(user.expoPushToken, title, body, targetRole);
+                }
+            }
+
 
             res.status(200).send({
                 success: true,
                 message: "Post Sack Successfully",
-                sack
+                sack,
             });
         } catch (error) {
-            console.log(error);
+            console.error("Create Sack Error:", error.message, error.stack);
             res.status(500).send({
                 success: false,
                 message: "Error In Post API",
-                error,
+                error: error.message || error.toString(),
             });
+        }
+    },
+    deleteSack: async (req, res) => {
+        try {
+            const sackId = req.params.id;
+            const deletedSack = await Sack.findByIdAndDelete(sackId)
+            res.status(200).json({ message: 'Deleted Sack Approved.', deletedSack })
+        } catch (error) {
+            res.status(400).json({ mesage: 'Deleted Sack Error.' })
         }
     },
     addToSack: async (req, res) => {
@@ -93,11 +120,6 @@ const sackController = {
             const item = req.body;
 
             let existingAddToSack = await AddToSack.findOne({ user: id });
-            // const sack = await Sack.findById(item._id)
-
-            // sack.status = 'pickup'
-
-            // await sack.save()
 
             if (existingAddToSack) {
                 if (existingAddToSack.status !== "pending") {
@@ -151,24 +173,20 @@ const sackController = {
     getStoreSacks: async (req, res) => {
         try {
             const { id } = req.params;
-
             let sacks = await Sack.find({ seller: id });
-            // console.log(sacks.length,'Sack')
             const sellerData = await User.findById(id);
             const { stallDescription, stallAddress, stallImage, status, openHours, closeHours } = sellerData.stall;
 
             const nowUTC8 = new Date(Date.now() + 8 * 60 * 60 * 1000);
 
-            // Update status and create notifications for trashed sacks
             const notifications = [];
             const updatedSacks = sacks.map(sack => {
                 const spoilageDate = new Date(sack.dbSpoil);
-                const daysPast = (nowUTC8 - spoilageDate) / (1000 * 60 * 60 * 24); // Convert ms to days
+                const daysPast = (nowUTC8 - spoilageDate) / (1000 * 60 * 60 * 24);
 
                 if (daysPast >= 3 && sack.status === "spoiled") {
                     sack.status = "trashed";
 
-                    // Create a notification for the seller
                     notifications.push({
                         user: sack.seller,
                         message: ` Your sack has been trashed: ${sack.description}`,
@@ -211,7 +229,7 @@ const sackController = {
                 }
 
                 return sack;
-            }).filter(sack => sack.isModified("status")); // Save only modified sacks
+            }).filter(sack => sack.isModified("status"));
 
             await Promise.all(updatedSacks.map(sack => sack.save()));
 
@@ -231,10 +249,9 @@ const sackController = {
             const nowUTC8 = new Date(Date.now() + 8 * 60 * 60 * 1000);
             const notifications = [];
 
-            // Use Promise.all to fetch sellerData for each sack asynchronously
             const updatedSacks = await Promise.all(sacks.map(async (sack) => {
                 const sellerData = await User.findById(sack.seller);
-                if (!sellerData) return sack; // skip if no seller found
+                if (!sellerData) return sack;
 
                 const {
                     stallDescription,
@@ -323,6 +340,26 @@ const sackController = {
             res.status(500).json({ message: "Fetch Sacks Error Backend" });
         }
     },
+    deleteMySackItem: async (req, res) => {
+        try {
+            const { addToSackId, sackId } = req.params;
+
+            const updatedDoc = await AddToSack.findByIdAndUpdate(
+                addToSackId,
+                { $pull: { sacks: { sackId: new mongoose.Types.ObjectId(sackId) } } },
+                { new: true }
+            );
+
+            if (!updatedDoc) {
+                return res.status(404).json({ message: "Sack not found" });
+            }
+
+            res.status(200).json({ message: "Sack deleted successfully", updatedDoc });
+        } catch (error) {
+            console.error("Error deleting sack:", error.message);
+            res.status(500).json({ message: "Server error while deleting sack" });
+        }
+    },
     getSacks: async (req, res) => {
         try {
             const { sackIds } = req.query;
@@ -355,6 +392,19 @@ const sackController = {
         } catch (error) {
             console.error("Fetch All Sacks Error Backend:", error.message);
             res.status(500).json({ message: "Fetch Sacks Error Backend" });
+        }
+    },
+    getAllPickupSackStatus: async (req, res) => {
+        try {
+            const pickups = await Pickup.find().sort({ createdAt: -1 });
+            // console.log(users)
+            return res.status(200).json({
+                success: true,
+                pickups,
+            });
+        } catch (error) {
+            console.error(error);
+            return res.status(500).json({ error: "Internal Server Error" });
         }
     },
     pickupSacks: async (req, res) => {
@@ -397,16 +447,30 @@ const sackController = {
                 pickupTimestamp: utcPlus8,
             });
 
-            // Notify each seller
+            // 🛎️ Notify each seller
             const notifications = mySack.flatMap(entry =>
                 entry.sacks.map(async (sack) => {
+                    // Create DB Notification
                     await Notification.create({
                         user: sack.seller,
                         type: 'pickup',
                         message: `Your sack at Stall #${sack.stallNumber} has been requested for pickup.`,
                     });
+
+                    // 🔔 Send Push Notification if seller has expoPushToken
+                    const seller = await User.findById(sack.seller);
+                    if (seller?.expoPushToken) {
+                        await sendPushNotification(
+                            seller.expoPushToken,
+                            'Pickup Request',
+                            `Your sack at Stall #${sack.stallNumber} has been requested for pickup.`,
+                            seller.role // optional: useful if you want to track by role
+                        );
+                        console.log(`🔔 Push sent to ${seller.name} (Role: ${seller.role})`);
+                    }
                 })
             );
+
             await Promise.all(notifications);
 
             const deleteMySack = await AddToSack.findById(id);
@@ -419,7 +483,7 @@ const sackController = {
 
             return res.status(201).json({ message: "Pickup created successfully!", data: newPickup });
         } catch (error) {
-            console.error("Fetch All Sacks Error Backend:", error.message);
+            console.error("Pickup Sacks Error:", error.message);
             res.status(500).json({ message: "Fetch Sacks Error Backend" });
         }
     },
@@ -476,11 +540,24 @@ const sackController = {
             const userName = pickup.user.name;
 
             const notifications = pickup.sacks.map(async (sack) => {
-                return Notification.create({
+                // 🛎 Create in-app notification
+                await Notification.create({
                     user: sack.seller._id,
                     type: 'pickup',
-                    message: ` ${userName} is on the way to pick up the sack from your Stall #${sack.stallNumber}.`,
+                    message: `${userName} is on the way to pick up the sack from your Stall #${sack.stallNumber}.`,
                 });
+
+                // 🔔 Push notification
+                const seller = sack.seller;
+                if (seller?.expoPushToken) {
+                    await sendPushNotification(
+                        seller.expoPushToken,
+                        'Pickup In Progress',
+                        `${userName} is on the way to pick up the sack from your Stall #${sack.stallNumber}.`,
+                        seller.role
+                    );
+                    console.log(`🔔 Notified ${seller.name} (Role: ${seller.role})`);
+                }
             });
 
             await Promise.all(notifications);
@@ -494,16 +571,42 @@ const sackController = {
     sackStatusClaimed: async (req, res) => {
         try {
             const { sackIds } = req.body;
-            // console.log(sackIds)
+
             if (!sackIds || sackIds.length === 0) {
                 return res.status(400).json({ message: "No sack IDs provided" });
             }
 
+            // Update sack status to claimed
             await Sack.updateMany(
                 { _id: { $in: sackIds } },
                 { $set: { status: "claimed" } }
             );
-            const sacks = await Sack.find({ _id: { $in: sackIds } });
+
+            const sacks = await Sack.find({ _id: { $in: sackIds } }).populate('seller');
+
+            // Notify each seller
+            const notifications = sacks.map(async (sack) => {
+                // In-app notification
+                await Notification.create({
+                    user: sack.seller._id,
+                    type: 'claimed',
+                    message: `Your sack at Stall #${sack.stallNumber} has been marked as claimed.`,
+                });
+
+                // Push notification
+                const seller = sack.seller;
+                if (seller?.expoPushToken) {
+                    await sendPushNotification(
+                        seller.expoPushToken,
+                        'Sack Claimed',
+                        `Your sack at Stall #${sack.stallNumber} has been marked as claimed.`,
+                        seller.role
+                    );
+                    console.log(`🔔 Notified ${seller.name} (Role: ${seller.role})`);
+                }
+            });
+
+            await Promise.all(notifications);
 
             res.status(200).json({ message: "Sack was claimed successfully!", sacks });
         } catch (error) {
@@ -515,39 +618,30 @@ const sackController = {
         try {
             const { id } = req.params;
 
-            const pickup = await Pickup.findById(id);
+            const pickup = await Pickup.findById(id).populate('sacks.seller');
             if (!pickup) {
                 return res.status(404).json({ message: "Pickup not found!" });
             }
 
             const updatedSacks = [];
-            const unclaimedSackIds = [];
-
             let totalKilo = 0;
-
             for (const item of pickup.sacks) {
                 const sack = await Sack.findById(item.sackId);
+                if (!sack) continue;
+
                 if (sack.status === "claimed") {
                     updatedSacks.push(item.sackId);
                     totalKilo += Number(sack.kilo) || 0;
                 } else {
-                    unclaimedSackIds.push(item.sackId);
+                    item.status = "cancelled";
                     await Sack.findByIdAndUpdate(item.sackId, { status: "posted" });
                 }
             }
 
-            pickup.sacks = pickup.sacks.filter(item => {
-                return !unclaimedSackIds
-                    .map(id => id.toString())
-                    .includes(item.sackId.toString());
-            });
-
             pickup.markModified('sacks');
-
             pickup.status = "completed";
             pickup.totalKilo = totalKilo;
             pickup.pickedUpDate = new Date(Date.now() + 8 * 60 * 60 * 1000);
-
             await pickup.save();
 
             await Sack.updateMany(
@@ -555,10 +649,32 @@ const sackController = {
                 { $set: { status: "claimed" } }
             );
 
-            res.status(200).json({
-                message: "Pickup completed. Any unclaimed sacks reverted.",
+            const claimedSacks = await Sack.find({ _id: { $in: updatedSacks } }).populate('seller');
+            const notifySellers = claimedSacks.map(async sack => {
+                const seller = sack.seller;
+
+                await Notification.create({
+                    user: seller._id,
+                    type: 'pickup_completed',
+                    message: `Your sack at Stall #${sack.stallNumber} has been successfully picked up.`,
+                });
+
+                if (seller?.expoPushToken) {
+                    await sendPushNotification(
+                        seller.expoPushToken,
+                        'Pickup Complete',
+                        `Your sack at Stall #${sack.stallNumber} has been successfully picked up.`,
+                        seller.role
+                    );
+                    console.log(`🔔 Notified ${seller.name} about pickup completion.`);
+                }
+            });
+
+            await Promise.all(notifySellers);
+
+            return res.status(200).json({
+                message: "Pickup completed. Unclaimed sacks marked as cancelled.",
                 pickup,
-                hadUnclaimed: unclaimedSackIds.length > 0,
             });
 
         } catch (error) {

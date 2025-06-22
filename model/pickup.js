@@ -49,6 +49,10 @@ const PickupSchema = new mongoose.Schema({
                 },
             },
         ],
+        status: {
+            type: String,
+            enum: ['claimed', 'cancelled'],
+        },
     }],
     status: {
         type: String,

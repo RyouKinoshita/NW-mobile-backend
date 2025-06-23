@@ -10,7 +10,7 @@ const sendPushNotification = require('../utils/sendNotification');
 const sackController = {
     createSack: async (req, res) => {
         try {
-            const result = await cloudinary.v2.uploader.upload(req.file.path, {
+            const result = await cloudinary.uploader.upload(req.file.path, {
                 folder: "avatars",
                 width: 200,
                 crop: "scale",
@@ -32,7 +32,7 @@ const sackController = {
                 status: sackStatus,
                 images: {
                     public_id: result.public_id,
-                    url: result.url,
+                    url: result.secure_url,
                 },
             });
 

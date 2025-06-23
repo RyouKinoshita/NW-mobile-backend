@@ -3,7 +3,7 @@ const Tracker = require("../model/tracker")
 
 exports.inputTrack = async (req, res) => {
     try {
-        const result = await cloudinary.v2.uploader.upload(
+        const result = await cloudinary.uploader.upload(
             req.file.path,
             {
                 folder: "avatars",
@@ -23,7 +23,7 @@ exports.inputTrack = async (req, res) => {
             image: [
                 {
                     public_id: result.public_id,
-                    url: result.url,
+                    url: result.secure_url,
                 },
             ],
         };

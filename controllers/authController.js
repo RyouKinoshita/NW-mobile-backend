@@ -8,7 +8,7 @@ const { isErrored } = require("stream");
 const stripe = require('stripe')(process.env.STRIPE_SECRET);
 
 exports.registerUser = async (req, res, next) => {
-  const result = await cloudinary.v2.uploader.upload(
+  const result = await cloudinary.uploader.upload(
     req.file.path,
     {
       folder: "avatars",
@@ -28,7 +28,7 @@ exports.registerUser = async (req, res, next) => {
     password,
     avatar: {
       public_id: result.public_id,
-      url: result.url,
+      url: result.secure_url,
     },
     role,
     isDeleted: false,
@@ -47,7 +47,7 @@ exports.registerUser = async (req, res, next) => {
 exports.createUser = async (req, res, next) => {
   // console.log(req.file);
   // console.log(req.body);
-  const result = await cloudinary.v2.uploader.upload(
+  const result = await cloudinary.uploader.upload(
     req.file.path,
     {
       folder: "avatars",
@@ -72,7 +72,7 @@ exports.createUser = async (req, res, next) => {
     password,
     avatar: {
       public_id: result.public_id,
-      url: result.url,
+      url: result.secure_url,
     },
     stripeCustomerId: stripeCustomer.id,
     isDeleted: false,
@@ -384,7 +384,7 @@ exports.addVendorStall = async (req, res, next) => {
     let stallImage = {};
 
     if (req.file) {
-      const result = await cloudinary.v2.uploader.upload(req.file.path, {
+      const result = await cloudinary.uploader.upload(req.file.path, {
         folder: "stalls",
         width: 400,
         crop: "scale",

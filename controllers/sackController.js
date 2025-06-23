@@ -600,7 +600,10 @@ const sackController = {
                 { $set: { status: "claimed" } }
             );
 
-            const sacks = await Sack.find({ _id: { $in: sackIds } }).populate('seller');
+            const sacks = await Sack.find({ _id: { $in: sackIds } }).populate({
+                path: 'seller',
+                select: 'name role expoPushToken',
+            });
 
             // Notify each seller
             const notifications = sacks.map(async (sack) => {

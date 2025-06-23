@@ -529,32 +529,46 @@ const sackController = {
     pickupSacksNow: async (req, res) => {
         try {
             const { id } = req.params;
-            const pickup = await Pickup.findById(id).populate('user').populate('sacks.seller');
+
+            // Fetch pickup and populate 'user'
+            const pickup = await Pickup.findById(id).populate('user');
+
             if (!pickup) {
                 return res.status(404).json({ message: "Pickup not found" });
             }
 
+            // ✅ Manually populate each sack's seller (since sacks is embedded, not a ref)
+            await Promise.all(
+                pickup.sacks.map(async (sack, index) => {
+                    const populatedSeller = await User.findById(sack.seller);
+                    pickup.sacks[index].seller = populatedSeller;
+                })
+            );
+
+            // Update pickup status
             pickup.status = 'pickup';
             await pickup.save();
 
             const userName = pickup.user.name;
 
+            // Send notifications
             const notifications = pickup.sacks.map(async (sack) => {
+                const seller = sack.seller;
+
                 // 🛎 Create in-app notification
                 await Notification.create({
-                    user: sack.seller._id,
+                    user: seller._id,
                     type: 'pickup',
                     message: `${userName} is on the way to pick up the sack from your Stall #${sack.stallNumber}.`,
                 });
 
                 // 🔔 Push notification
-                const seller = sack.seller;
                 if (seller?.expoPushToken) {
                     await sendPushNotification(
                         seller.expoPushToken,
                         'Pickup In Progress',
                         `${userName} is on the way to pick up the sack from your Stall #${sack.stallNumber}.`,
-                        seller.role
+                        seller.role // ✅ Now this should be available
                     );
                     console.log(`🔔 Notified ${seller.name} (Role: ${seller.role})`);
                 }
@@ -562,10 +576,14 @@ const sackController = {
 
             await Promise.all(notifications);
 
-            res.status(200).json({ message: "Pickup started, sellers notified!", pickup });
+            return res.status(200).json({
+                message: "Pickup started, sellers notified!",
+                pickup,
+            });
+
         } catch (error) {
             console.error("Error updating pickups:", error);
-            res.status(500).json({ message: "Server error" });
+            return res.status(500).json({ message: "Server error" });
         }
     },
     sackStatusClaimed: async (req, res) => {

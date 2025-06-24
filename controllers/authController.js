@@ -138,7 +138,7 @@ exports.getUser = async (req, res, next) => {
   try {
     const userId = req.params.id;
     const user = await User.findById(userId);
-    console.log(user)
+    // console.log(user)
 
     if (!user) {
       return res.status(404).json({
@@ -160,7 +160,7 @@ exports.getUser = async (req, res, next) => {
 exports.addUserAddress = async (req, res, next) => {
   try {
     const { _id, lotNum, street, baranggay, city } = req.body;
-    console.log(req.body)
+    // console.log(req.body)
     if (!_id || !lotNum || !street || !baranggay || !city) {
       return res.status(400).json({ success: false, message: "All fields are required." });
     }
@@ -429,7 +429,7 @@ exports.getAllStalls = async (req, res, next) => {
       "stall.stallDescription": { $exists: true, $ne: null },
     }).select("stall name _id");
 
-    console.log(stalls);
+    // console.log(stalls);
     return res.status(200).json({
       success: true,
       stalls,

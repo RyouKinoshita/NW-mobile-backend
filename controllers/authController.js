@@ -425,13 +425,14 @@ exports.getAllStalls = async (req, res, next) => {
   try {
     const stalls = await User.find({
       role: "vendor",
+      isDeleted: false,
       "stall.stallDescription": { $exists: true, $ne: null },
     }).select("stall name _id");
 
-    console.log(stalls)
+    console.log(stalls);
     return res.status(200).json({
       success: true,
-      stalls, // Return only stall data
+      stalls,
     });
   } catch (error) {
     console.error("Error fetching stalls:", error);

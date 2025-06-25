@@ -713,6 +713,11 @@ const sackController = {
                 return res.status(404).json({ message: "Sack or seller not found" });
             }
 
+            // ✅ Prevent duplicate reviews
+            if (sack.reviewed) {
+                return res.status(400).json({ message: "Sack has already been reviewed." });
+            }
+
             const seller = await User.findById(sack.seller._id);
             if (!seller) {
                 return res.status(404).json({ message: "Seller not found" });
@@ -728,7 +733,9 @@ const sackController = {
             seller.stall.review.push({ text: review, date: new Date() });
 
             await seller.save();
-
+            sack.reviewed = true;
+            await sack.save();
+            
             return res.status(200).json({ message: "Seller rated successfully", seller });
         } catch (error) {
             console.error("Error rating seller from sack:", error);

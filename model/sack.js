@@ -51,6 +51,10 @@ const sackSchema = new mongoose.Schema({
         type: Date,
         default: Date.now,
     },
+    reviewed: {
+        type: Boolean,
+        default: false,
+    }
 });
 
 module.exports = mongoose.model("Sack", sackSchema);

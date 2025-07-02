@@ -175,7 +175,7 @@ const sackController = {
             const { id } = req.params;
             let sacks = await Sack.find({ seller: id });
             const sellerData = await User.findById(id);
-            const { stallDescription, stallAddress, stallImage, status, openHours, closeHours } = sellerData.stall;
+            const { stallDescription, stallAddress, stallNumber, stallImage, status, openHours, closeHours } = sellerData.stall;
 
             const nowUTC8 = new Date(Date.now() + 8 * 60 * 60 * 1000);
 
@@ -490,22 +490,25 @@ const sackController = {
     deleteAddedSack: async (req, res) => {
         try {
             const { id } = req.params;
-            const { sackIds } = req.body;
+            const { sackIds, status } = req.body;
 
             if (!sackIds || sackIds.length === 0) {
                 return res.status(400).json({ message: "No sack IDs provided" });
             }
 
+            const newStatus = status || "posted"; // default to posted if not provided
+
             console.log("Sack IDs:", sackIds);
+            console.log("Status to set:", newStatus);
 
             await Sack.updateMany(
                 { _id: { $in: sackIds } },
-                { $set: { status: "posted" } }
+                { $set: { status: newStatus } }
             );
 
-
             const result = await Pickup.findByIdAndDelete(id);
-            console.log(result, 'result')
+            console.log(result, 'result');
+
             res.status(200).json({ message: "pickupSack deleted successfully!" });
         } catch (error) {
             console.error("Error deleting pickupSack:", error);
@@ -662,6 +665,7 @@ const sackController = {
             pickup.markModified('sacks');
             pickup.status = "completed";
             pickup.totalKilo = totalKilo;
+            pickup.pickupTimestamp = new Date();
             pickup.pickedUpDate = new Date(Date.now() + 8 * 60 * 60 * 1000);
             await pickup.save();
 
@@ -735,7 +739,7 @@ const sackController = {
             await seller.save();
             sack.reviewed = true;
             await sack.save();
-            
+
             return res.status(200).json({ message: "Seller rated successfully", seller });
         } catch (error) {
             console.error("Error rating seller from sack:", error);

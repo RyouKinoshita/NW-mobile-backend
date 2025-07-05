@@ -650,6 +650,10 @@ const sackController = {
 
             const updatedSacks = [];
             let totalKilo = 0;
+
+            // New array that will only include the claimed sacks
+            const claimedSackItems = [];
+
             for (const item of pickup.sacks) {
                 const sack = await Sack.findById(item.sackId);
                 if (!sack) continue;
@@ -657,24 +661,33 @@ const sackController = {
                 if (sack.status === "claimed") {
                     updatedSacks.push(item.sackId);
                     totalKilo += Number(sack.kilo) || 0;
+
+                    claimedSackItems.push(item); // Keep this one
                 } else {
-                    item.status = "cancelled";
-                    await Sack.findByIdAndUpdate(item.sackId, { status: "posted" });
+                    // Set sack back to "posted"
+                    sack.status = "posted";
+                    await sack.save();
+
+                    // 🗑️ Do NOT push this to claimedSackItems — remove from pickup
                 }
             }
 
-            pickup.markModified('sacks');
+            // Replace pickup.sacks with only the claimed ones
+            pickup.sacks = claimedSackItems;
+
             pickup.status = "completed";
             pickup.totalKilo = totalKilo;
             pickup.pickupTimestamp = new Date();
-            pickup.pickedUpDate = new Date(Date.now() + 8 * 60 * 60 * 1000);
+            pickup.pickedUpDate = new Date(Date.now() + 8 * 60 * 60 * 1000); // PH timezone
             await pickup.save();
 
+            // Make sure all claimed sacks are marked as claimed
             await Sack.updateMany(
                 { _id: { $in: updatedSacks } },
                 { $set: { status: "claimed" } }
             );
 
+            // Send notifications
             const claimedSacks = await Sack.find({ _id: { $in: updatedSacks } }).populate('seller');
             const notifySellers = claimedSacks.map(async sack => {
                 const seller = sack.seller;
@@ -700,13 +713,29 @@ const sackController = {
             await Promise.all(notifySellers);
 
             return res.status(200).json({
-                message: "Pickup completed. Unclaimed sacks marked as cancelled.",
+                message: "Pickup completed. Unclaimed sacks removed and marked as posted.",
                 pickup,
             });
 
         } catch (error) {
             console.error("Error in completing pickup:", error);
             return res.status(500).json({ message: "Error in completing pickup!" });
+        }
+    },
+    claimSack: async (req, res) => {
+        try {
+            const sack = await Sack.findById(req.params.id);
+            if (!sack) {
+                return res.status(404).json({ message: "Sack not found" });
+            }
+
+            sack.status = "claimed";
+            await sack.save();
+
+            res.status(200).json({ message: "Sack cancelled successfully", sack });
+        } catch (error) {
+            console.error("Cancel Sack Error:", error);
+            res.status(500).json({ message: "Server Error" });
         }
     },
     rateTransaction: async (req, res) => {

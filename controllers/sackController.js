@@ -562,6 +562,7 @@ const sackController = {
                 await Notification.create({
                     user: seller._id,
                     type: 'pickup',
+                    pickupId: id,
                     message: `${userName} is on the way to pick up the sack from your Stall #${sack.stallNumber}.`,
                 });
 
@@ -681,6 +682,7 @@ const sackController = {
                 await Notification.create({
                     user: seller._id,
                     type: 'pickup_completed',
+                    pickupId: id,
                     message: `Your sack at Stall #${sack.stallNumber} has been successfully picked up.`,
                 });
 

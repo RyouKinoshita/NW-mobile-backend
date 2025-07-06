@@ -184,7 +184,7 @@ const sackController = {
                 const spoilageDate = new Date(sack.dbSpoil);
                 const daysPast = (nowUTC8 - spoilageDate) / (1000 * 60 * 60 * 24);
 
-                if (daysPast >= 3 && sack.status === "spoiled") {
+                if (daysPast >= 2 && sack.status === "spoiled") {
                     sack.status = "trashed";
 
                     notifications.push({
@@ -642,6 +642,7 @@ const sackController = {
     completePickUp: async (req, res) => {
         try {
             const { id } = req.params;
+            const { role } = req.body;
 
             const pickup = await Pickup.findById(id).populate('sacks.seller');
             if (!pickup) {
@@ -650,8 +651,6 @@ const sackController = {
 
             const updatedSacks = [];
             let totalKilo = 0;
-
-            // New array that will only include the claimed sacks
             const claimedSackItems = [];
 
             for (const item of pickup.sacks) {
@@ -661,34 +660,44 @@ const sackController = {
                 if (sack.status === "claimed") {
                     updatedSacks.push(item.sackId);
                     totalKilo += Number(sack.kilo) || 0;
-
-                    claimedSackItems.push(item); // Keep this one
+                    claimedSackItems.push(item);
                 } else {
-                    // Set sack back to "posted"
-                    sack.status = "posted";
+                    // 🟢 Update unclaimed sack based on role
+                    if (role === "farmer") {
+                        sack.status = "posted";
+                    } else if (role === "composter") {
+                        sack.status = "spoiled";
+                    } else {
+                        console.warn(`⚠️ Unknown role: ${role}. Defaulting to "posted"`);
+                        sack.status = "posted";
+                    }
                     await sack.save();
-
-                    // 🗑️ Do NOT push this to claimedSackItems — remove from pickup
                 }
             }
 
-            // Replace pickup.sacks with only the claimed ones
-            pickup.sacks = claimedSackItems;
+            // ❌ If NO sacks were claimed, delete pickup but still update sacks above
+            if (claimedSackItems.length === 0) {
+                await pickup.deleteOne();
+                return res.status(200).json({
+                    message: "No sacks were claimed. Pickup has been deleted, and unclaimed sacks have been updated.",
+                });
+            }
 
+            // ✅ If there were claimed sacks, update pickup
+            pickup.sacks = claimedSackItems;
             pickup.status = "completed";
             pickup.totalKilo = totalKilo;
             pickup.pickupTimestamp = new Date();
             pickup.pickedUpDate = new Date(Date.now() + 8 * 60 * 60 * 1000); // PH timezone
             await pickup.save();
 
-            // Make sure all claimed sacks are marked as claimed
             await Sack.updateMany(
                 { _id: { $in: updatedSacks } },
                 { $set: { status: "claimed" } }
             );
 
-            // Send notifications
             const claimedSacks = await Sack.find({ _id: { $in: updatedSacks } }).populate('seller');
+
             const notifySellers = claimedSacks.map(async sack => {
                 const seller = sack.seller;
 
@@ -713,7 +722,7 @@ const sackController = {
             await Promise.all(notifySellers);
 
             return res.status(200).json({
-                message: "Pickup completed. Unclaimed sacks removed and marked as posted.",
+                message: "Pickup completed. Unclaimed sacks removed and marked based on role.",
                 pickup,
             });
 

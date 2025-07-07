@@ -184,7 +184,7 @@ const sackController = {
                 const spoilageDate = new Date(sack.dbSpoil);
                 const daysPast = (nowUTC8 - spoilageDate) / (1000 * 60 * 60 * 24);
 
-                if (daysPast >= 2 && sack.status === "spoiled") {
+                if (daysPast >= 1 && sack.status === "spoiled") {
                     sack.status = "trashed";
 
                     notifications.push({

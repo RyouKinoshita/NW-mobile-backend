@@ -369,7 +369,7 @@ exports.getVendorStall = async (req, res, next) => {
 
 exports.addVendorStall = async (req, res, next) => {
   try {
-    const { stallDescription, stallAddress, stallNumber, openHours, closeHours } = req.body;
+    const { stallDescription, stallAddress, stallNumber, openHours, closeHours, storeType } = req.body;
     const _id = req.params.id;
 
     if (!_id) {
@@ -398,7 +398,7 @@ exports.addVendorStall = async (req, res, next) => {
 
     const updatedUser = await User.findByIdAndUpdate(
       _id,
-      { $set: { "stall": { stallDescription, stallAddress, stallNumber, stallImage, openHours, closeHours, user: _id } } },
+      { $set: { "stall": { stallDescription, stallAddress, stallNumber, storeType, stallImage, openHours, closeHours, user: _id } } },
       { new: true, runValidators: true }
     );
 
